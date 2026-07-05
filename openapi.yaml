@@ -1,0 +1,876 @@
+openapi: 3.1.0
+info:
+  title: alphai REST API
+  version: "1.10.0"
+  description: |
+    Public REST API for alphai's relevance-scored, ticker-linked financial news.
+    All endpoints accept `Authorization: Bearer ak_live_…` (issued from your
+    `/account/api-keys`). Authenticated traffic is metered per account with two
+    layers — a per-minute burst cap and a per-day volume cap (Free 20/min +
+    100/day, Basic 60/min + 10,000/day, Pro 150/min + 100,000/day); a request
+    passes only if both are under budget. The Free tier is for evaluation /
+    personal non-commercial use; Basic is licensed for internal commercial use;
+    Pro adds redistribution of the enriched feed. Send all API traffic to
+    `api.alphai.io`; a key is required on every request.
+
+    Every keyed response carries `X-RateLimit-Limit`, `X-RateLimit-Remaining`
+    and `X-RateLimit-Reset`; these report the per-day volume layer (Reset =
+    epoch seconds of the next 00:00 UTC reset) so you can watch your daily budget
+    without provoking a 429. A per-minute burst surfaces only as a 429 with a
+    short `Retry-After`. A 429 body also names your tier, its caps and an
+    `upgrade` block. The headers reflect origin processing, so a response
+    served from a shared cache may omit them.
+
+    News-archive depth is tiered: Free keys can page the feeds back 30 days,
+    Basic 90 days, Pro the full archive. Paging past your horizon returns `403`
+    with an `extra.reason` of `archive_horizon` (see the ArchiveGated response).
+
+    Insider data (SEC EDGAR Form 4) flows through the same news shape:
+    `category=insider` rows in the feed, a dedicated `/api/news/insider/`
+    route, and 30-day per-ticker rollups at
+    `/api/symbols/{ticker}/insider-summary/`.
+
+    See https://alphai.io/developers for the score and sentiment legend, and
+    https://alphai.io/pricing for tier limits.
+  contact:
+    name: alphai support
+    email: support@alphai.io
+    url: https://alphai.io/contact
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://api.alphai.io
+    description: Production (API host — key required)
+
+security:
+  - apiKey: []
+
+tags:
+  - name: news
+    description: Relevance-scored, ticker-linked news.
+  - name: symbols
+    description: Active equity, crypto, and foreign symbols (tickers).
+
+paths:
+  /api/news/:
+    get:
+      tags: [news]
+      summary: List news (cursor-paginated)
+      description: |
+        Feed of enriched articles, newest first. Default filter:
+        `relevance_score >= 4` AND at least one active ticker. Pagination is
+        cursor-based with a page size of 10 (Pro keys may request 50 via
+        `page_size=50`): omit `cursor` for the newest page, then pass the
+        `next_cursor` from each response to fetch the next (older) page.
+        `next_cursor: null` means the end of the feed. Cursors are opaque — do
+        not construct or parse them; an invalid cursor returns 400. Archive
+        depth is tiered: paging back past your plan's horizon (Free 30 days,
+        Basic 90, Pro unlimited) returns 403 with an upgrade hint.
+      parameters:
+        - in: query
+          name: cursor
+          description: Opaque cursor from a prior response's `next_cursor`. Omit for the newest page.
+          schema: { type: string }
+        - in: query
+          name: symbol
+          description: Filter to articles that mention this ticker.
+          schema: { type: string, example: "NVDA" }
+        - in: query
+          name: category
+          description: >-
+            Keep only these categories. Accepts a single value, a CSV list
+            (`category=earnings,insider`), or a repeated parameter — matches
+            any of them (OR).
+          style: form
+          explode: true
+          schema:
+            type: array
+            items: { $ref: "#/components/schemas/NewsCategory" }
+        - in: query
+          name: exclude_categories
+          description: >-
+            Drop these categories from the feed. Same single / CSV / repeated
+            forms as `category`.
+          style: form
+          explode: true
+          schema:
+            type: array
+            items: { $ref: "#/components/schemas/NewsCategory" }
+        - in: query
+          name: min_relevance
+          description: Override the default ≥4 threshold.
+          schema: { type: integer, minimum: 1, maximum: 10, default: 4 }
+        - in: query
+          name: page_size
+          description: >-
+            Items per page. Only `10` (default, every tier) and `50` (Pro keys
+            only) are accepted — any other value returns 400, and requesting
+            `50` without a Pro key returns 400. Pagination is otherwise
+            unchanged: pass each response's `next_cursor` back as `cursor`
+            regardless of page size.
+          schema: { type: integer, enum: [10, 50], default: 10 }
+        - in: query
+          name: collapse
+          description: >-
+            `story` collapses syndicated reprints of one event to a single
+            representative row (the story root) and populates the `story_id`,
+            `sources_count` and `sources` fields on each item. Omit for the full
+            feed (every reprint, story fields `null`). Only `story` is accepted;
+            any other value returns 400.
+
+            Note: row-level filters (`symbol`, `category`, `min_relevance`)
+            apply to the story's representative root, so a story whose root does
+            not match the filter is omitted entirely.
+          schema: { type: string, enum: [story] }
+      responses:
+        "200":
+          description: A page of enriched articles.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NewsPagination" }
+        "400": { description: Invalid/expired cursor, unsupported `collapse` value, or a `page_size` that is not 10/50 or not permitted on this tier. }
+        "403": { $ref: "#/components/responses/ArchiveGated" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/news/trending/:
+    get:
+      tags: [news]
+      summary: Trending news (last 48h)
+      description: >-
+        Top stories from the trailing 48h: `relevance_score >= 8`, ranked by
+        score then recency. Fixed size of 10, no pagination. Syndicated reprints
+        of one story are collapsed to a single representative.
+      responses:
+        "200":
+          description: List of enriched articles.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RichNewsArticle" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/news/insider/:
+    get:
+      tags: [news]
+      summary: Insider-transaction news (SEC Form 4)
+      description: |
+        Dedicated insider feed (`category=insider`): SEC EDGAR Form 4 insider
+        activity ONLY — one deterministic-templated row per filing event
+        (a filing's non-derivative trades of one type and holding form,
+        aggregated: total shares, volume-weighted average price and executed
+        range, total value), surfaced shortly after filing, with the relevance
+        score computed from the event's total (size, buy vs. sell, 10b5-1 plan
+        or not). Same enriched shape, ticker
+        and `relevance_score >= 4` filtering, and cursor-based pagination as
+        `/api/news/`. Equivalent to `/api/news/?category=insider`, surfaced as a
+        first-class route. For aggregate stats instead of the stream, see
+        `/api/symbols/{ticker}/insider-summary/`.
+      parameters:
+        - in: query
+          name: cursor
+          description: Opaque cursor from a prior response's `next_cursor`. Omit for the newest page.
+          schema: { type: string }
+        - in: query
+          name: symbol
+          description: Filter to insider news that mentions this ticker.
+          schema: { type: string, example: "NVDA" }
+        - in: query
+          name: page_size
+          description: >-
+            Items per page. Only `10` (default, every tier) and `50` (Pro keys
+            only) are accepted — any other value returns 400, and requesting
+            `50` without a Pro key returns 400.
+          schema: { type: integer, enum: [10, 50], default: 10 }
+      responses:
+        "200":
+          description: A page of enriched insider-transaction articles.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NewsPagination" }
+        "400": { description: Invalid/expired cursor, or a `page_size` that is not 10/50 or not permitted on this tier. }
+        "403": { $ref: "#/components/responses/ArchiveGated" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/news/{uid}/:
+    get:
+      tags: [news]
+      summary: Get a news article by UID
+      parameters:
+        - in: path
+          name: uid
+          required: true
+          schema: { type: string, pattern: "^[a-f0-9]{16}$" }
+      responses:
+        "200":
+          description: A single enriched article.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RichNewsArticle" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/news/{uid}/related/:
+    get:
+      tags: [news]
+      summary: Articles related to one article
+      description: |
+        Up to 6 articles related to the given article: fresh articles sharing
+        a ticker first, then same-category recents as backfill. Same enriched
+        shape and `relevance_score >= 4` filtering as `/api/news/`; insider
+        (SEC Form 4) rows are excluded unless the base article is itself
+        insider. No pagination — the list is a fixed-size block.
+      parameters:
+        - in: path
+          name: uid
+          required: true
+          schema: { type: string, pattern: "^[a-f0-9]{16}$" }
+      responses:
+        "200":
+          description: Related enriched articles (possibly fewer than 6).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results]
+                properties:
+                  results:
+                    type: array
+                    maxItems: 6
+                    items: { $ref: "#/components/schemas/RichNewsArticle" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/symbols/:
+    get:
+      tags: [symbols]
+      summary: List active tickers
+      description: >-
+        All active symbols (US equities, crypto, and foreign listings),
+        alphabetical by ticker. ~10k entries — cache aggressively, or slice with
+        the optional `limit`/`offset` params (the response stays a bare array
+        either way).
+      parameters:
+        - in: query
+          name: limit
+          description: Return at most this many symbols. Omit for the full list.
+          schema: { type: integer, minimum: 1, maximum: 10000 }
+        - in: query
+          name: offset
+          description: Skip this many symbols from the start of the list.
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: List of active symbols.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Symbol" }
+        "400": { description: Out-of-range or unknown query parameter. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/symbols/{ticker}/:
+    get:
+      tags: [symbols]
+      summary: Symbol detail
+      parameters:
+        - in: path
+          name: ticker
+          required: true
+          schema: { type: string, pattern: "^[A-Z0-9][A-Z0-9.\\-]{0,19}$" }
+      responses:
+        "200":
+          description: Symbol with extended metadata.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Symbol" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/symbols/{ticker}/sentiment-summary/:
+    get:
+      tags: [symbols]
+      summary: 7-day AI sentiment rollup for one ticker
+      description: |
+        Counts of bullish / neutral / bearish per-ticker sentiment calls from
+        the enriched news flow over the trailing 7 days, plus per-day buckets.
+        Insider (SEC Form 4) template rows are excluded — this reflects press
+        coverage, not filings.
+      parameters:
+        - in: path
+          name: ticker
+          required: true
+          schema: { type: string, pattern: "^[A-Z0-9][A-Z0-9.\\-]{0,19}$" }
+      responses:
+        "200":
+          description: >-
+            Sentiment counts for the window. A well-formed but unknown ticker
+            returns zeros rather than 404.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TickerSentimentSummary" }
+        "400": { description: Malformed ticker. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/symbols/{ticker}/insider-summary/:
+    get:
+      tags: [symbols]
+      summary: 30-day insider-transaction rollup for one ticker
+      description: |
+        Aggregated SEC Form 4 activity over the trailing 30 days: buy/sell
+        transaction counts, dollar volumes, the share of transactions executed
+        under pre-arranged 10b5-1 plans, and the most active insiders ranked
+        by absolute net value (buys minus sells).
+      parameters:
+        - in: path
+          name: ticker
+          required: true
+          schema: { type: string, pattern: "^[A-Z0-9][A-Z0-9.\\-]{0,19}$" }
+      responses:
+        "200":
+          description: >-
+            Insider activity stats for the window. A well-formed but unknown
+            ticker returns zeros rather than 404.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TickerInsiderSummary" }
+        "400": { description: Malformed ticker. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/symbols/{ticker}/peers/:
+    get:
+      tags: [symbols]
+      summary: Related tickers for one ticker
+      description: |
+        Other companies in the same industry (widening to the broader sector
+        when the industry is thin) that carry recent enriched news, most
+        recently covered first. Powers the "Related tickers" links on the stock
+        hub pages.
+      parameters:
+        - in: path
+          name: ticker
+          required: true
+          schema: { type: string, pattern: "^[A-Z0-9][A-Z0-9.\\-]{0,19}$" }
+      responses:
+        "200":
+          description: >-
+            Up to ten related tickers. A well-formed but unknown ticker, or one
+            with no peers carrying recent news, returns an empty list.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SymbolPeers" }
+        "400": { description: Malformed ticker. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/symbols/directory/:
+    get:
+      tags: [symbols]
+      summary: Stock directory — most-covered tickers and sector cards
+      description: |
+        The hub index behind /stocks: the globally most-covered tickers over
+        the trailing window, plus one card per sector (size + its busiest
+        names). Ranked by recent enriched-news coverage.
+      responses:
+        "200":
+          description: Most-active tickers and sector cards.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SymbolDirectory" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/symbols/sectors/{slug}/:
+    get:
+      tags: [symbols]
+      summary: One sector's most-covered tickers
+      description: |
+        The tickers in a sector (by slug, e.g. `financial-services`), ranked by
+        recent enriched-news coverage. Powers the /stocks/{slug} sub-pages.
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema: { type: string, pattern: "^[a-z0-9-]+$" }
+      responses:
+        "200":
+          description: The sector and its most-covered tickers.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SectorSymbols" }
+        "404": { description: Unknown sector slug. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+components:
+  securitySchemes:
+    apiKey:
+      type: http
+      scheme: bearer
+      bearerFormat: ak_live_*
+      description: |
+        Token of the form `ak_live_<random>`. Issued from
+        `/account/api-keys` on the website. Send as `Authorization: Bearer …`.
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid API key.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    RateLimited:
+      description: |
+        Rate limit exceeded — either the per-minute burst cap or the per-day
+        volume cap. The `Retry-After` header tells you how long to wait (a burst
+        block is short, ≤60s; a day-cap block is capped at 3600s — the true reset
+        is `X-RateLimit-Reset`). The `X-RateLimit-*` trio shows the daily volume
+        budget. The body's `extra` names your tier, its `limit_per_minute` /
+        `limit_per_day`, `retry_after_seconds`, and — below Pro — an `upgrade`
+        block with the higher tiers' caps and the pricing URL.
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying (burst ≤60s; day cap ≤3600s).
+          schema: { type: integer }
+        X-RateLimit-Limit:
+          description: The tier's per-day request volume.
+          schema: { type: integer }
+        X-RateLimit-Remaining:
+          description: Requests left in today's volume budget.
+          schema: { type: integer }
+        X-RateLimit-Reset:
+          description: Epoch seconds of the next 00:00 UTC reset.
+          schema: { type: integer }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: No item with that identifier.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    ArchiveGated:
+      description: |
+        The requested `cursor` points past your plan's news-archive horizon
+        (Free 30 days, Basic 90; Pro is unlimited and never sees this). The
+        body's `extra` carries `reason: archive_horizon`, your `tier`, the
+        plan's `archive_days`, and an `upgrade` block with the higher tiers'
+        caps and the pricing URL. First pages and cursors within the horizon
+        are unaffected.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    NewsCategory:
+      type: string
+      description: >-
+        `market_movers` is for articles whose subject IS a notable price move
+        ("AMD up 5% today"); `sector_analysis` is genuine sector-level
+        analysis; `insider` covers SEC Form 4 insider transactions only;
+        `corporate_actions` covers issuer SEC 8-K events (earnings, material
+        agreements, debt, executive changes, annual-meeting results).
+      enum:
+        - earnings
+        - mergers_acquisitions
+        - regulation
+        - macro_economy
+        - sector_analysis
+        - market_movers
+        - technology
+        - commodities
+        - crypto
+        - ipo
+        - geopolitics
+        - insider
+        - corporate_actions
+        - other
+
+    Sentiment:
+      type: string
+      enum: [positive, neutral, negative]
+
+    Confidence:
+      type: string
+      enum: [high, medium, low]
+
+    Actionability:
+      type: string
+      enum: [high, medium, low, negligible]
+
+    Topic:
+      type: object
+      required: [topic, relevance]
+      properties:
+        topic: { type: string }
+        relevance: { type: number, format: float }
+
+    OriginalArticle:
+      type: object
+      description: The article as fetched from the source. `raw_text` is intentionally NOT exposed here.
+      required: [uid, title, url, summary, time_published, source]
+      properties:
+        id: { type: integer }
+        uid: { type: string, pattern: "^[a-f0-9]{16}$" }
+        title: { type: string }
+        url: { type: string, format: uri }
+        time_published: { type: string, format: date-time }
+        authors: { type: array, items: { type: string } }
+        summary: { type: string, description: AI-generated summary safe to redistribute. }
+        banner_image: { type: string, format: uri, nullable: true }
+        source: { type: string }
+        source_domain: { type: string }
+        topics:
+          type: array
+          items: { $ref: "#/components/schemas/Topic" }
+        tickers_sentiment:
+          type: array
+          items: { type: object, additionalProperties: true }
+        ownership_form:
+          type: string
+          nullable: true
+          enum: [direct, indirect]
+          description: >-
+            SEC Form 4 insider rows only — the holding pool the transaction
+            touched. `null` for non-insider news. A single Form 4 can surface a
+            `direct` and an `indirect` leg of the same plan as two separate
+            articles (same filing URL, same date); they are distinct economic
+            events, so SUM them rather than dedupe by URL/accession.
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    ImpactAnalysis:
+      type: object
+      properties:
+        summary: { type: string }
+        sentiment: { $ref: "#/components/schemas/Sentiment" }
+        price_impact_prediction: { type: string }
+        confidence: { $ref: "#/components/schemas/Confidence" }
+        reasoning: { type: string }
+
+    TickerAnalysis:
+      type: object
+      properties:
+        ticker: { type: string }
+        relevance_context: { type: string }
+        impact_analysis: { $ref: "#/components/schemas/ImpactAnalysis" }
+
+    NewsTradingValue:
+      type: object
+      properties:
+        actionability_score: { $ref: "#/components/schemas/Actionability" }
+        information_novelty:
+          type: integer
+          minimum: 0
+          maximum: 10
+          description: >-
+            How much NEW information the article carries (1–10), kept separate
+            from relevance: a mega-cap post-earnings recap is high relevance
+            but low novelty. 0 on rows enriched before the field existed.
+        timing_relevance: { type: string }
+        market_sentiment_alignment: { type: string }
+        estimated_read_time: { type: string }
+
+    IndirectMarketEffects:
+      type: object
+      properties:
+        sector_implications: { type: string }
+        regional_market_impact: { type: string }
+        global_market_relevance: { type: string }
+
+    AlternativePerspectives:
+      type: object
+      properties:
+        contrarian_view: { type: string }
+        overlooked_factors: { type: string }
+
+    KeyEntity:
+      type: object
+      properties:
+        name: { type: string }
+        type: { type: string, example: company }
+        description: { type: string }
+
+    NewsContextEnhancement:
+      type: object
+      properties:
+        background_context: { type: string }
+        impact_analysis: { type: string }
+        key_entities:
+          type: array
+          items: { $ref: "#/components/schemas/KeyEntity" }
+        market_relevance_summary: { type: string }
+        estimated_read_time_minutes: { type: integer }
+
+    AITradingInsights:
+      type: object
+      properties:
+        ticker_analysis:
+          type: array
+          items: { $ref: "#/components/schemas/TickerAnalysis" }
+        news_trading_value: { $ref: "#/components/schemas/NewsTradingValue" }
+        indirect_market_effects: { $ref: "#/components/schemas/IndirectMarketEffects" }
+        alternative_perspectives: { $ref: "#/components/schemas/AlternativePerspectives" }
+
+    EnrichedArticle:
+      type: object
+      properties:
+        category: { $ref: "#/components/schemas/NewsCategory" }
+        tickers:
+          type: array
+          items: { type: string }
+          description: >-
+            Validated tickers the article mentions — only symbols present in
+            `/api/symbols/` survive enrichment-time verification against the
+            article text. Mirrors `ai_trading_insights.ticker_analysis[].ticker`.
+          example: ["NVDA"]
+        relevance_score:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: |
+            How much trading value the article itself carries (rates the
+            article, not the company; deterministic — same article, same
+            score):
+            1–2 no trading relevance · 3–4 derivative content about
+            already-known events · 5–6 macro/sector datapoints, minor-but-real
+            company news · 7–8 real company news with a fresh catalyst ·
+            9–10 primary, material, newly disclosed.
+            SEC Form 4 rows are scored from the transaction itself (size,
+            buy vs. sell, 10b5-1 plan or not) rather than by the model.
+        ai_trading_insights: { $ref: "#/components/schemas/AITradingInsights" }
+        news_context_enhancement: { $ref: "#/components/schemas/NewsContextEnhancement" }
+
+    RichNewsArticle:
+      type: object
+      required: [original, enrichment]
+      properties:
+        original: { $ref: "#/components/schemas/OriginalArticle" }
+        enrichment: { $ref: "#/components/schemas/EnrichedArticle" }
+        story_id:
+          type: string
+          nullable: true
+          description: >-
+            Story-collapse only (`?collapse=story`). The `uid` of this story's
+            representative article — equal to this item's own `original.uid`, and
+            resolvable via `/api/news/{uid}/`. `null` in the default feed.
+          example: "788e477c66f3849b"
+        sources_count:
+          type: integer
+          nullable: true
+          description: >-
+            Story-collapse only. Number of distinct outlets (source domains)
+            covering this story — a corroboration signal, so the same outlet
+            running it more than once counts once. May exceed the length of
+            `sources`, which is capped at 10. `null` in the default feed.
+          example: 7
+        sources:
+          type: array
+          nullable: true
+          items: { type: string }
+          description: >-
+            Story-collapse only. Distinct source domains covering this story, in
+            first-appearance order, capped at 10. `null` in the default feed.
+          example: ["reuters.com", "apnews.com", "bloomberg.com"]
+
+    NewsPagination:
+      type: object
+      required: [results, next_cursor]
+      properties:
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/RichNewsArticle" }
+        next_cursor:
+          type: string
+          nullable: true
+          description: >-
+            Opaque cursor for the next (older) page. Pass it back as `?cursor=`.
+            `null` when the end of the feed has been reached.
+
+    Symbol:
+      type: object
+      required: [symbol, name]
+      properties:
+        symbol: { type: string }
+        name: { type: string }
+        asset_type: { type: string, example: Stock, description: "`Stock`, `ETF`, or `Crypto`." }
+        exchange:
+          type: string
+          example: NASDAQ
+          description: >-
+            TradingView exchange prefix. US: NYSE / NASDAQ / AMEX / OTC / CBOE
+            (from SEC's exchange mapping). Foreign listings carry their venue
+            prefix (LSE, XETR, EURONEXT, TSE, HKEX, KRX, …); crypto carries the
+            `CRYPTO` sentinel. Empty string when unknown.
+        sector: { type: string }
+        industry: { type: string }
+        description: { type: string }
+        website: { type: string, format: uri, nullable: true }
+        country:
+          type: string
+          description: ISO alpha-2 country code (foreign listings; empty for US/crypto).
+          example: GB
+        currency:
+          type: string
+          description: Trading currency (foreign/crypto; empty for US).
+          example: GBP
+
+    SymbolPeer:
+      type: object
+      required: [ticker, name]
+      properties:
+        ticker: { type: string, example: "AMD" }
+        name: { type: string, example: "Advanced Micro Devices Inc" }
+
+    SymbolPeers:
+      type: object
+      required: [ticker, group, group_kind, peers]
+      properties:
+        ticker: { type: string }
+        group:
+          type: string
+          description: Industry (or sector) label the peers share; empty if none.
+          example: "Semiconductors"
+        group_kind:
+          type: string
+          enum: ["industry", "sector", ""]
+          description: Whether the peers were grouped by industry or the broader sector.
+        peers:
+          type: array
+          items: { $ref: "#/components/schemas/SymbolPeer" }
+
+    DirectorySymbol:
+      type: object
+      required: [ticker, name, news_count]
+      properties:
+        ticker: { type: string, example: "NVDA" }
+        name: { type: string, example: "NVIDIA Corp" }
+        news_count:
+          type: integer
+          description: Above-floor enriched-news rows mentioning the ticker in the window.
+
+    DirectorySector:
+      type: object
+      required: [sector, slug, count, top]
+      properties:
+        sector: { type: string, example: "Technology" }
+        slug: { type: string, example: "technology" }
+        count:
+          type: integer
+          description: Total active symbols in the sector.
+        top:
+          type: array
+          items: { $ref: "#/components/schemas/DirectorySymbol" }
+
+    SymbolDirectory:
+      type: object
+      required: [most_active, sectors]
+      properties:
+        most_active:
+          type: array
+          items: { $ref: "#/components/schemas/DirectorySymbol" }
+        sectors:
+          type: array
+          items: { $ref: "#/components/schemas/DirectorySector" }
+
+    SectorSymbols:
+      type: object
+      required: [sector, slug, count, symbols]
+      properties:
+        sector: { type: string }
+        slug: { type: string }
+        count: { type: integer }
+        symbols:
+          type: array
+          items: { $ref: "#/components/schemas/DirectorySymbol" }
+
+    TickerSentimentSummary:
+      type: object
+      required: [ticker, days, total, bullish, neutral, bearish, daily]
+      properties:
+        ticker: { type: string }
+        days: { type: integer, example: 7 }
+        total: { type: integer, description: Articles with a sentiment call in the window. }
+        bullish: { type: integer }
+        neutral: { type: integer }
+        bearish: { type: integer }
+        daily:
+          type: array
+          items: { $ref: "#/components/schemas/DailySentimentBucket" }
+
+    DailySentimentBucket:
+      type: object
+      required: [day, bullish, neutral, bearish]
+      properties:
+        day: { type: string, format: date }
+        bullish: { type: integer }
+        neutral: { type: integer }
+        bearish: { type: integer }
+
+    TickerInsiderSummary:
+      type: object
+      required: [ticker, days, total_transactions, buy_count, sell_count, pct_10b5_1, top_insiders]
+      properties:
+        ticker: { type: string }
+        days: { type: integer, example: 30 }
+        total_transactions: { type: integer }
+        buy_count: { type: integer }
+        sell_count: { type: integer }
+        buy_value_usd:
+          type: string
+          nullable: true
+          example: "1240000.00"
+          description: Decimal string in USD; null when the window has no buys.
+        sell_value_usd:
+          type: string
+          nullable: true
+          example: "224580213.05"
+          description: Decimal string in USD; null when the window has no sells.
+        pct_10b5_1:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Share of transactions executed under a pre-arranged 10b5-1 plan, in percent.
+        top_insiders:
+          type: array
+          items: { $ref: "#/components/schemas/TopInsider" }
+
+    TopInsider:
+      type: object
+      required: [name, title, transaction_count]
+      properties:
+        name: { type: string, example: STEVENS MARK A }
+        title:
+          type: string
+          description: Officer title from the filing; empty when the filer reports as a director only.
+        transaction_count: { type: integer }
+        net_value:
+          type: string
+          nullable: true
+          example: "-221102600.00"
+          description: Buys minus sells in USD over the window, as a decimal string.
+
+    Error:
+      type: object
+      properties:
+        message: { type: string }
+        error: { type: string }
+        detail: { type: string }
+        extra:
+          type: object
+          description: >-
+            Machine-readable context on capped responses: the 429 carries
+            `tier`, `limit_per_minute`, `limit_per_day`, `retry_after_seconds`;
+            the archive 403 carries `reason: archive_horizon`, `tier`,
+            `archive_days`. Both include an `upgrade` object (higher tiers'
+            caps + `pricing_url`) for callers below Pro.

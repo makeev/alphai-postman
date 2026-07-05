@@ -1,0 +1,4144 @@
+{
+  "item": [
+    {
+      "name": "news",
+      "description": "Relevance-scored, ticker-linked news.",
+      "item": [
+        {
+          "id": "2a774ad4-9fb7-4627-b0af-3a321b39d1fb",
+          "name": "List news (cursor-paginated)",
+          "request": {
+            "name": "List news (cursor-paginated)",
+            "description": {
+              "content": "Feed of enriched articles, newest first. Default filter:\n`relevance_score >= 4` AND at least one active ticker. Pagination is\ncursor-based with a page size of 10 (Pro keys may request 50 via\n`page_size=50`): omit `cursor` for the newest page, then pass the\n`next_cursor` from each response to fetch the next (older) page.\n`next_cursor: null` means the end of the feed. Cursors are opaque — do\nnot construct or parse them; an invalid cursor returns 400. Archive\ndepth is tiered: paging back past your plan's horizon (Free 30 days,\nBasic 90, Pro unlimited) returns 403 with an upgrade hint.\n",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "news",
+                ""
+              ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "query": [
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Opaque cursor from a prior response's `next_cursor`. Omit for the newest page.",
+                    "type": "text/plain"
+                  },
+                  "key": "cursor",
+                  "value": "<string>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Filter to articles that mention this ticker.",
+                    "type": "text/plain"
+                  },
+                  "key": "symbol",
+                  "value": "<string>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Keep only these categories. Accepts a single value, a CSV list (`category=earnings,insider`), or a repeated parameter — matches any of them (OR).",
+                    "type": "text/plain"
+                  },
+                  "key": "category",
+                  "value": "sector_analysis"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Keep only these categories. Accepts a single value, a CSV list (`category=earnings,insider`), or a repeated parameter — matches any of them (OR).",
+                    "type": "text/plain"
+                  },
+                  "key": "category",
+                  "value": "commodities"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Drop these categories from the feed. Same single / CSV / repeated forms as `category`.",
+                    "type": "text/plain"
+                  },
+                  "key": "exclude_categories",
+                  "value": "sector_analysis"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Drop these categories from the feed. Same single / CSV / repeated forms as `category`.",
+                    "type": "text/plain"
+                  },
+                  "key": "exclude_categories",
+                  "value": "commodities"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Override the default ≥4 threshold.",
+                    "type": "text/plain"
+                  },
+                  "key": "min_relevance",
+                  "value": "4"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Items per page. Only `10` (default, every tier) and `50` (Pro keys only) are accepted — any other value returns 400, and requesting `50` without a Pro key returns 400. Pagination is otherwise unchanged: pass each response's `next_cursor` back as `cursor` regardless of page size. (This can only be one of 10,50)",
+                    "type": "text/plain"
+                  },
+                  "key": "page_size",
+                  "value": "10"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "`story` collapses syndicated reprints of one event to a single representative row (the story root) and populates the `story_id`, `sources_count` and `sources` fields on each item. Omit for the full feed (every reprint, story fields `null`). Only `story` is accepted; any other value returns 400.\nNote: row-level filters (`symbol`, `category`, `min_relevance`) apply to the story's representative root, so a story whose root does not match the filter is omitted entirely. (This can only be one of story)",
+                    "type": "text/plain"
+                  },
+                  "key": "collapse",
+                  "value": "story"
+                }
+              ],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "method": "GET",
+            "body": {},
+            "auth": null
+          },
+          "response": [
+            {
+              "id": "ff5fa916-7010-4808-8678-db330597a18e",
+              "name": "A page of enriched articles.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "news",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Opaque cursor from a prior response's `next_cursor`. Omit for the newest page.",
+                        "type": "text/plain"
+                      },
+                      "key": "cursor",
+                      "value": "<string>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Filter to articles that mention this ticker.",
+                        "type": "text/plain"
+                      },
+                      "key": "symbol",
+                      "value": "<string>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Keep only these categories. Accepts a single value, a CSV list (`category=earnings,insider`), or a repeated parameter — matches any of them (OR).",
+                        "type": "text/plain"
+                      },
+                      "key": "category",
+                      "value": "commodities"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Drop these categories from the feed. Same single / CSV / repeated forms as `category`.",
+                        "type": "text/plain"
+                      },
+                      "key": "exclude_categories",
+                      "value": "commodities"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Override the default ≥4 threshold.",
+                        "type": "text/plain"
+                      },
+                      "key": "min_relevance",
+                      "value": "4"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Items per page. Only `10` (default, every tier) and `50` (Pro keys only) are accepted — any other value returns 400, and requesting `50` without a Pro key returns 400. Pagination is otherwise unchanged: pass each response's `next_cursor` back as `cursor` regardless of page size. (This can only be one of 10,50)",
+                        "type": "text/plain"
+                      },
+                      "key": "page_size",
+                      "value": "10"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "`story` collapses syndicated reprints of one event to a single representative row (the story root) and populates the `story_id`, `sources_count` and `sources` fields on each item. Omit for the full feed (every reprint, story fields `null`). Only `story` is accepted; any other value returns 400.\nNote: row-level filters (`symbol`, `category`, `min_relevance`) apply to the story's representative root, so a story whose root does not match the filter is omitted entirely. (This can only be one of story)",
+                        "type": "text/plain"
+                      },
+                      "key": "collapse",
+                      "value": "story"
+                    }
+                  ],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"results\": [\n    {\n      \"original\": {\n        \"uid\": \"5fdda974f664829d\",\n        \"title\": \"<string>\",\n        \"url\": \"<uri>\",\n        \"summary\": \"<string>\",\n        \"time_published\": \"<dateTime>\",\n        \"source\": \"<string>\",\n        \"id\": \"<integer>\",\n        \"authors\": [\n          \"<string>\",\n          \"<string>\"\n        ],\n        \"banner_image\": \"<uri>\",\n        \"source_domain\": \"<string>\",\n        \"topics\": [\n          {\n            \"topic\": \"<string>\",\n            \"relevance\": \"<float>\"\n          },\n          {\n            \"topic\": \"<string>\",\n            \"relevance\": \"<float>\"\n          }\n        ],\n        \"tickers_sentiment\": [\n          {\n            \"key_0\": \"string\",\n            \"key_1\": 1900.0666944868826,\n            \"key_2\": 2536\n          },\n          {\n            \"key_0\": \"string\"\n          }\n        ],\n        \"ownership_form\": \"indirect\",\n        \"created_at\": \"<dateTime>\",\n        \"updated_at\": \"<dateTime>\"\n      },\n      \"enrichment\": {\n        \"category\": \"macro_economy\",\n        \"tickers\": [\n          \"<string>\",\n          \"<string>\"\n        ],\n        \"relevance_score\": \"<integer>\",\n        \"ai_trading_insights\": {\n          \"ticker_analysis\": [\n            {\n              \"ticker\": \"<string>\",\n              \"relevance_context\": \"<string>\",\n              \"impact_analysis\": {\n                \"summary\": \"<string>\",\n                \"sentiment\": \"positive\",\n                \"price_impact_prediction\": \"<string>\",\n                \"confidence\": \"medium\",\n                \"reasoning\": \"<string>\"\n              }\n            },\n            {\n              \"ticker\": \"<string>\",\n              \"relevance_context\": \"<string>\",\n              \"impact_analysis\": {\n                \"summary\": \"<string>\",\n                \"sentiment\": \"negative\",\n                \"price_impact_prediction\": \"<string>\",\n                \"confidence\": \"low\",\n                \"reasoning\": \"<string>\"\n              }\n            }\n          ],\n          \"news_trading_value\": {\n            \"actionability_score\": \"medium\",\n            \"information_novelty\": \"<integer>\",\n            \"timing_relevance\": \"<string>\",\n            \"market_sentiment_alignment\": \"<string>\",\n            \"estimated_read_time\": \"<string>\"\n          },\n          \"indirect_market_effects\": {\n            \"sector_implications\": \"<string>\",\n            \"regional_market_impact\": \"<string>\",\n            \"global_market_relevance\": \"<string>\"\n          },\n          \"alternative_perspectives\": {\n            \"contrarian_view\": \"<string>\",\n            \"overlooked_factors\": \"<string>\"\n          }\n        },\n        \"news_context_enhancement\": {\n          \"background_context\": \"<string>\",\n          \"impact_analysis\": \"<string>\",\n          \"key_entities\": [\n            {\n              \"name\": \"<string>\",\n              \"type\": \"<string>\",\n              \"description\": \"<string>\"\n            },\n            {\n              \"name\": \"<string>\",\n              \"type\": \"<string>\",\n              \"description\": \"<string>\"\n            }\n          ],\n          \"market_relevance_summary\": \"<string>\",\n          \"estimated_read_time_minutes\": \"<integer>\"\n        }\n      },\n      \"story_id\": \"<string>\",\n      \"sources_count\": \"<integer>\",\n      \"sources\": [\n        \"<string>\",\n        \"<string>\"\n      ]\n    },\n    {\n      \"original\": {\n        \"uid\": \"edc2efddc35f2886\",\n        \"title\": \"<string>\",\n        \"url\": \"<uri>\",\n        \"summary\": \"<string>\",\n        \"time_published\": \"<dateTime>\",\n        \"source\": \"<string>\",\n        \"id\": \"<integer>\",\n        \"authors\": [\n          \"<string>\",\n          \"<string>\"\n        ],\n        \"banner_image\": \"<uri>\",\n        \"source_domain\": \"<string>\",\n        \"topics\": [\n          {\n            \"topic\": \"<string>\",\n            \"relevance\": \"<float>\"\n          },\n          {\n            \"topic\": \"<string>\",\n            \"relevance\": \"<float>\"\n          }\n        ],\n        \"tickers_sentiment\": [\n          {\n            \"key_0\": 7206.105861745606\n          },\n          {\n            \"key_0\": \"string\",\n            \"key_1\": \"string\"\n          }\n        ],\n        \"ownership_form\": \"indirect\",\n        \"created_at\": \"<dateTime>\",\n        \"updated_at\": \"<dateTime>\"\n      },\n      \"enrichment\": {\n        \"category\": \"mergers_acquisitions\",\n        \"tickers\": [\n          \"<string>\",\n          \"<string>\"\n        ],\n        \"relevance_score\": \"<integer>\",\n        \"ai_trading_insights\": {\n          \"ticker_analysis\": [\n            {\n              \"ticker\": \"<string>\",\n              \"relevance_context\": \"<string>\",\n              \"impact_analysis\": {\n                \"summary\": \"<string>\",\n                \"sentiment\": \"negative\",\n                \"price_impact_prediction\": \"<string>\",\n                \"confidence\": \"low\",\n                \"reasoning\": \"<string>\"\n              }\n            },\n            {\n              \"ticker\": \"<string>\",\n              \"relevance_context\": \"<string>\",\n              \"impact_analysis\": {\n                \"summary\": \"<string>\",\n                \"sentiment\": \"neutral\",\n                \"price_impact_prediction\": \"<string>\",\n                \"confidence\": \"low\",\n                \"reasoning\": \"<string>\"\n              }\n            }\n          ],\n          \"news_trading_value\": {\n            \"actionability_score\": \"high\",\n            \"information_novelty\": \"<integer>\",\n            \"timing_relevance\": \"<string>\",\n            \"market_sentiment_alignment\": \"<string>\",\n            \"estimated_read_time\": \"<string>\"\n          },\n          \"indirect_market_effects\": {\n            \"sector_implications\": \"<string>\",\n            \"regional_market_impact\": \"<string>\",\n            \"global_market_relevance\": \"<string>\"\n          },\n          \"alternative_perspectives\": {\n            \"contrarian_view\": \"<string>\",\n            \"overlooked_factors\": \"<string>\"\n          }\n        },\n        \"news_context_enhancement\": {\n          \"background_context\": \"<string>\",\n          \"impact_analysis\": \"<string>\",\n          \"key_entities\": [\n            {\n              \"name\": \"<string>\",\n              \"type\": \"<string>\",\n              \"description\": \"<string>\"\n            },\n            {\n              \"name\": \"<string>\",\n              \"type\": \"<string>\",\n              \"description\": \"<string>\"\n            }\n          ],\n          \"market_relevance_summary\": \"<string>\",\n          \"estimated_read_time_minutes\": \"<integer>\"\n        }\n      },\n      \"story_id\": \"<string>\",\n      \"sources_count\": \"<integer>\",\n      \"sources\": [\n        \"<string>\",\n        \"<string>\"\n      ]\n    }\n  ],\n  \"next_cursor\": \"<string>\"\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "c5feb0fb-c975-4bb3-a42c-6c478ee6b831",
+              "name": "Invalid/expired cursor",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "news",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Opaque cursor from a prior response's `next_cursor`. Omit for the newest page.",
+                        "type": "text/plain"
+                      },
+                      "key": "cursor",
+                      "value": "<string>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Filter to articles that mention this ticker.",
+                        "type": "text/plain"
+                      },
+                      "key": "symbol",
+                      "value": "<string>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Keep only these categories. Accepts a single value, a CSV list (`category=earnings,insider`), or a repeated parameter — matches any of them (OR).",
+                        "type": "text/plain"
+                      },
+                      "key": "category",
+                      "value": "commodities"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Drop these categories from the feed. Same single / CSV / repeated forms as `category`.",
+                        "type": "text/plain"
+                      },
+                      "key": "exclude_categories",
+                      "value": "commodities"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Override the default ≥4 threshold.",
+                        "type": "text/plain"
+                      },
+                      "key": "min_relevance",
+                      "value": "4"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Items per page. Only `10` (default, every tier) and `50` (Pro keys only) are accepted — any other value returns 400, and requesting `50` without a Pro key returns 400. Pagination is otherwise unchanged: pass each response's `next_cursor` back as `cursor` regardless of page size. (This can only be one of 10,50)",
+                        "type": "text/plain"
+                      },
+                      "key": "page_size",
+                      "value": "10"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "`story` collapses syndicated reprints of one event to a single representative row (the story root) and populates the `story_id`, `sources_count` and `sources` fields on each item. Omit for the full feed (every reprint, story fields `null`). Only `story` is accepted; any other value returns 400.\nNote: row-level filters (`symbol`, `category`, `min_relevance`) apply to the story's representative root, so a story whose root does not match the filter is omitted entirely. (This can only be one of story)",
+                        "type": "text/plain"
+                      },
+                      "key": "collapse",
+                      "value": "story"
+                    }
+                  ],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [],
+              "cookie": [],
+              "_postman_previewlanguage": "text"
+            },
+            {
+              "id": "285d9525-b3f0-476c-978c-34d418e8a901",
+              "name": "Missing or invalid API key.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "news",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Opaque cursor from a prior response's `next_cursor`. Omit for the newest page.",
+                        "type": "text/plain"
+                      },
+                      "key": "cursor",
+                      "value": "<string>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Filter to articles that mention this ticker.",
+                        "type": "text/plain"
+                      },
+                      "key": "symbol",
+                      "value": "<string>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Keep only these categories. Accepts a single value, a CSV list (`category=earnings,insider`), or a repeated parameter — matches any of them (OR).",
+                        "type": "text/plain"
+                      },
+                      "key": "category",
+                      "value": "commodities"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Drop these categories from the feed. Same single / CSV / repeated forms as `category`.",
+                        "type": "text/plain"
+                      },
+                      "key": "exclude_categories",
+                      "value": "commodities"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Override the default ≥4 threshold.",
+                        "type": "text/plain"
+                      },
+                      "key": "min_relevance",
+                      "value": "4"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Items per page. Only `10` (default, every tier) and `50` (Pro keys only) are accepted — any other value returns 400, and requesting `50` without a Pro key returns 400. Pagination is otherwise unchanged: pass each response's `next_cursor` back as `cursor` regardless of page size. (This can only be one of 10,50)",
+                        "type": "text/plain"
+                      },
+                      "key": "page_size",
+                      "value": "10"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "`story` collapses syndicated reprints of one event to a single representative row (the story root) and populates the `story_id`, `sources_count` and `sources` fields on each item. Omit for the full feed (every reprint, story fields `null`). Only `story` is accepted; any other value returns 400.\nNote: row-level filters (`symbol`, `category`, `min_relevance`) apply to the story's representative root, so a story whose root does not match the filter is omitted entirely. (This can only be one of story)",
+                        "type": "text/plain"
+                      },
+                      "key": "collapse",
+                      "value": "story"
+                    }
+                  ],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "6a3842d3-0f63-4600-b683-6a33018691ec",
+              "name": "The requested `cursor` points past your plan's news-archive horizon\n(Free 30 days, Basic 90; Pro is unlimited and never sees this). The\nbody's `extra` carries `reason: archive_horizon`, your `tier`, the\nplan's `archive_days`, and an `upgrade` block with the higher tiers'\ncaps and the pricing URL. First pages and cursors within the horizon\nare unaffected.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "news",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Opaque cursor from a prior response's `next_cursor`. Omit for the newest page.",
+                        "type": "text/plain"
+                      },
+                      "key": "cursor",
+                      "value": "<string>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Filter to articles that mention this ticker.",
+                        "type": "text/plain"
+                      },
+                      "key": "symbol",
+                      "value": "<string>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Keep only these categories. Accepts a single value, a CSV list (`category=earnings,insider`), or a repeated parameter — matches any of them (OR).",
+                        "type": "text/plain"
+                      },
+                      "key": "category",
+                      "value": "commodities"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Drop these categories from the feed. Same single / CSV / repeated forms as `category`.",
+                        "type": "text/plain"
+                      },
+                      "key": "exclude_categories",
+                      "value": "commodities"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Override the default ≥4 threshold.",
+                        "type": "text/plain"
+                      },
+                      "key": "min_relevance",
+                      "value": "4"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Items per page. Only `10` (default, every tier) and `50` (Pro keys only) are accepted — any other value returns 400, and requesting `50` without a Pro key returns 400. Pagination is otherwise unchanged: pass each response's `next_cursor` back as `cursor` regardless of page size. (This can only be one of 10,50)",
+                        "type": "text/plain"
+                      },
+                      "key": "page_size",
+                      "value": "10"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "`story` collapses syndicated reprints of one event to a single representative row (the story root) and populates the `story_id`, `sources_count` and `sources` fields on each item. Omit for the full feed (every reprint, story fields `null`). Only `story` is accepted; any other value returns 400.\nNote: row-level filters (`symbol`, `category`, `min_relevance`) apply to the story's representative root, so a story whose root does not match the filter is omitted entirely. (This can only be one of story)",
+                        "type": "text/plain"
+                      },
+                      "key": "collapse",
+                      "value": "story"
+                    }
+                  ],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "92e6e5f3-2f3e-497b-a435-ce828ff6d905",
+              "name": "Rate limit exceeded — either the per-minute burst cap or the per-day\nvolume cap. The `Retry-After` header tells you how long to wait (a burst\nblock is short, ≤60s; a day-cap block is capped at 3600s — the true reset\nis `X-RateLimit-Reset`). The `X-RateLimit-*` trio shows the daily volume\nbudget. The body's `extra` names your tier, its `limit_per_minute` /\n`limit_per_day`, `retry_after_seconds`, and — below Pro — an `upgrade`\nblock with the higher tiers' caps and the pricing URL.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "news",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Opaque cursor from a prior response's `next_cursor`. Omit for the newest page.",
+                        "type": "text/plain"
+                      },
+                      "key": "cursor",
+                      "value": "<string>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Filter to articles that mention this ticker.",
+                        "type": "text/plain"
+                      },
+                      "key": "symbol",
+                      "value": "<string>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Keep only these categories. Accepts a single value, a CSV list (`category=earnings,insider`), or a repeated parameter — matches any of them (OR).",
+                        "type": "text/plain"
+                      },
+                      "key": "category",
+                      "value": "commodities"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Drop these categories from the feed. Same single / CSV / repeated forms as `category`.",
+                        "type": "text/plain"
+                      },
+                      "key": "exclude_categories",
+                      "value": "commodities"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Override the default ≥4 threshold.",
+                        "type": "text/plain"
+                      },
+                      "key": "min_relevance",
+                      "value": "4"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Items per page. Only `10` (default, every tier) and `50` (Pro keys only) are accepted — any other value returns 400, and requesting `50` without a Pro key returns 400. Pagination is otherwise unchanged: pass each response's `next_cursor` back as `cursor` regardless of page size. (This can only be one of 10,50)",
+                        "type": "text/plain"
+                      },
+                      "key": "page_size",
+                      "value": "10"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "`story` collapses syndicated reprints of one event to a single representative row (the story root) and populates the `story_id`, `sources_count` and `sources` fields on each item. Omit for the full feed (every reprint, story fields `null`). Only `story` is accepted; any other value returns 400.\nNote: row-level filters (`symbol`, `category`, `min_relevance`) apply to the story's representative root, so a story whose root does not match the filter is omitted entirely. (This can only be one of story)",
+                        "type": "text/plain"
+                      },
+                      "key": "collapse",
+                      "value": "story"
+                    }
+                  ],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Too Many Requests",
+              "code": 429,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Seconds to wait before retrying (burst ≤60s; day cap ≤3600s).",
+                    "type": "text/plain"
+                  },
+                  "key": "Retry-After",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "The tier's per-day request volume.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Limit",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Requests left in today's volume budget.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Remaining",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Epoch seconds of the next 00:00 UTC reset.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Reset",
+                  "value": "<integer>"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            }
+          ],
+          "event": [],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          }
+        },
+        {
+          "id": "6d01de10-fc01-4636-88a4-e447dd3f78fc",
+          "name": "Trending news (last 48h)",
+          "request": {
+            "name": "Trending news (last 48h)",
+            "description": {
+              "content": "Top stories from the trailing 48h: `relevance_score >= 8`, ranked by score then recency. Fixed size of 10, no pagination. Syndicated reprints of one story are collapsed to a single representative.",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "news",
+                "trending",
+                ""
+              ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "method": "GET",
+            "body": {},
+            "auth": null
+          },
+          "response": [
+            {
+              "id": "b0cef7b3-3506-4318-a815-2a5a59a58c3e",
+              "name": "List of enriched articles.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "news",
+                    "trending",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "[\n  {\n    \"original\": {\n      \"uid\": \"a2b2d1f34ef63aed\",\n      \"title\": \"<string>\",\n      \"url\": \"<uri>\",\n      \"summary\": \"<string>\",\n      \"time_published\": \"<dateTime>\",\n      \"source\": \"<string>\",\n      \"id\": \"<integer>\",\n      \"authors\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"banner_image\": \"<uri>\",\n      \"source_domain\": \"<string>\",\n      \"topics\": [\n        {\n          \"topic\": \"<string>\",\n          \"relevance\": \"<float>\"\n        },\n        {\n          \"topic\": \"<string>\",\n          \"relevance\": \"<float>\"\n        }\n      ],\n      \"tickers_sentiment\": [\n        {\n          \"key_0\": \"string\",\n          \"key_1\": true,\n          \"key_2\": 8077,\n          \"key_3\": 3285\n        },\n        {\n          \"key_0\": 5873\n        }\n      ],\n      \"ownership_form\": \"indirect\",\n      \"created_at\": \"<dateTime>\",\n      \"updated_at\": \"<dateTime>\"\n    },\n    \"enrichment\": {\n      \"category\": \"geopolitics\",\n      \"tickers\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"relevance_score\": \"<integer>\",\n      \"ai_trading_insights\": {\n        \"ticker_analysis\": [\n          {\n            \"ticker\": \"<string>\",\n            \"relevance_context\": \"<string>\",\n            \"impact_analysis\": {\n              \"summary\": \"<string>\",\n              \"sentiment\": \"negative\",\n              \"price_impact_prediction\": \"<string>\",\n              \"confidence\": \"low\",\n              \"reasoning\": \"<string>\"\n            }\n          },\n          {\n            \"ticker\": \"<string>\",\n            \"relevance_context\": \"<string>\",\n            \"impact_analysis\": {\n              \"summary\": \"<string>\",\n              \"sentiment\": \"negative\",\n              \"price_impact_prediction\": \"<string>\",\n              \"confidence\": \"high\",\n              \"reasoning\": \"<string>\"\n            }\n          }\n        ],\n        \"news_trading_value\": {\n          \"actionability_score\": \"negligible\",\n          \"information_novelty\": \"<integer>\",\n          \"timing_relevance\": \"<string>\",\n          \"market_sentiment_alignment\": \"<string>\",\n          \"estimated_read_time\": \"<string>\"\n        },\n        \"indirect_market_effects\": {\n          \"sector_implications\": \"<string>\",\n          \"regional_market_impact\": \"<string>\",\n          \"global_market_relevance\": \"<string>\"\n        },\n        \"alternative_perspectives\": {\n          \"contrarian_view\": \"<string>\",\n          \"overlooked_factors\": \"<string>\"\n        }\n      },\n      \"news_context_enhancement\": {\n        \"background_context\": \"<string>\",\n        \"impact_analysis\": \"<string>\",\n        \"key_entities\": [\n          {\n            \"name\": \"<string>\",\n            \"type\": \"<string>\",\n            \"description\": \"<string>\"\n          },\n          {\n            \"name\": \"<string>\",\n            \"type\": \"<string>\",\n            \"description\": \"<string>\"\n          }\n        ],\n        \"market_relevance_summary\": \"<string>\",\n        \"estimated_read_time_minutes\": \"<integer>\"\n      }\n    },\n    \"story_id\": \"<string>\",\n    \"sources_count\": \"<integer>\",\n    \"sources\": [\n      \"<string>\",\n      \"<string>\"\n    ]\n  },\n  {\n    \"original\": {\n      \"uid\": \"a1f09f99d05c3ee9\",\n      \"title\": \"<string>\",\n      \"url\": \"<uri>\",\n      \"summary\": \"<string>\",\n      \"time_published\": \"<dateTime>\",\n      \"source\": \"<string>\",\n      \"id\": \"<integer>\",\n      \"authors\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"banner_image\": \"<uri>\",\n      \"source_domain\": \"<string>\",\n      \"topics\": [\n        {\n          \"topic\": \"<string>\",\n          \"relevance\": \"<float>\"\n        },\n        {\n          \"topic\": \"<string>\",\n          \"relevance\": \"<float>\"\n        }\n      ],\n      \"tickers_sentiment\": [\n        {\n          \"key_0\": false\n        },\n        {\n          \"key_0\": 7657,\n          \"key_1\": true\n        }\n      ],\n      \"ownership_form\": \"indirect\",\n      \"created_at\": \"<dateTime>\",\n      \"updated_at\": \"<dateTime>\"\n    },\n    \"enrichment\": {\n      \"category\": \"sector_analysis\",\n      \"tickers\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"relevance_score\": \"<integer>\",\n      \"ai_trading_insights\": {\n        \"ticker_analysis\": [\n          {\n            \"ticker\": \"<string>\",\n            \"relevance_context\": \"<string>\",\n            \"impact_analysis\": {\n              \"summary\": \"<string>\",\n              \"sentiment\": \"negative\",\n              \"price_impact_prediction\": \"<string>\",\n              \"confidence\": \"medium\",\n              \"reasoning\": \"<string>\"\n            }\n          },\n          {\n            \"ticker\": \"<string>\",\n            \"relevance_context\": \"<string>\",\n            \"impact_analysis\": {\n              \"summary\": \"<string>\",\n              \"sentiment\": \"positive\",\n              \"price_impact_prediction\": \"<string>\",\n              \"confidence\": \"medium\",\n              \"reasoning\": \"<string>\"\n            }\n          }\n        ],\n        \"news_trading_value\": {\n          \"actionability_score\": \"high\",\n          \"information_novelty\": \"<integer>\",\n          \"timing_relevance\": \"<string>\",\n          \"market_sentiment_alignment\": \"<string>\",\n          \"estimated_read_time\": \"<string>\"\n        },\n        \"indirect_market_effects\": {\n          \"sector_implications\": \"<string>\",\n          \"regional_market_impact\": \"<string>\",\n          \"global_market_relevance\": \"<string>\"\n        },\n        \"alternative_perspectives\": {\n          \"contrarian_view\": \"<string>\",\n          \"overlooked_factors\": \"<string>\"\n        }\n      },\n      \"news_context_enhancement\": {\n        \"background_context\": \"<string>\",\n        \"impact_analysis\": \"<string>\",\n        \"key_entities\": [\n          {\n            \"name\": \"<string>\",\n            \"type\": \"<string>\",\n            \"description\": \"<string>\"\n          },\n          {\n            \"name\": \"<string>\",\n            \"type\": \"<string>\",\n            \"description\": \"<string>\"\n          }\n        ],\n        \"market_relevance_summary\": \"<string>\",\n        \"estimated_read_time_minutes\": \"<integer>\"\n      }\n    },\n    \"story_id\": \"<string>\",\n    \"sources_count\": \"<integer>\",\n    \"sources\": [\n      \"<string>\",\n      \"<string>\"\n    ]\n  }\n]",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "4ce3bc5d-5177-42b6-91c8-22155cab94e9",
+              "name": "Missing or invalid API key.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "news",
+                    "trending",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "cd4620f2-0e0d-48f6-865f-485e7b8ff696",
+              "name": "Rate limit exceeded — either the per-minute burst cap or the per-day\nvolume cap. The `Retry-After` header tells you how long to wait (a burst\nblock is short, ≤60s; a day-cap block is capped at 3600s — the true reset\nis `X-RateLimit-Reset`). The `X-RateLimit-*` trio shows the daily volume\nbudget. The body's `extra` names your tier, its `limit_per_minute` /\n`limit_per_day`, `retry_after_seconds`, and — below Pro — an `upgrade`\nblock with the higher tiers' caps and the pricing URL.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "news",
+                    "trending",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Too Many Requests",
+              "code": 429,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Seconds to wait before retrying (burst ≤60s; day cap ≤3600s).",
+                    "type": "text/plain"
+                  },
+                  "key": "Retry-After",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "The tier's per-day request volume.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Limit",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Requests left in today's volume budget.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Remaining",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Epoch seconds of the next 00:00 UTC reset.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Reset",
+                  "value": "<integer>"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            }
+          ],
+          "event": [],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          }
+        },
+        {
+          "id": "5b74ae10-8c97-48ad-a039-baca5374113e",
+          "name": "Insider-transaction news (SEC Form 4)",
+          "request": {
+            "name": "Insider-transaction news (SEC Form 4)",
+            "description": {
+              "content": "Dedicated insider feed (`category=insider`): SEC EDGAR Form 4 insider\nactivity ONLY — one deterministic-templated row per filing event\n(a filing's non-derivative trades of one type and holding form,\naggregated: total shares, volume-weighted average price and executed\nrange, total value), surfaced shortly after filing, with the relevance\nscore computed from the event's total (size, buy vs. sell, 10b5-1 plan\nor not). Same enriched shape, ticker\nand `relevance_score >= 4` filtering, and cursor-based pagination as\n`/api/news/`. Equivalent to `/api/news/?category=insider`, surfaced as a\nfirst-class route. For aggregate stats instead of the stream, see\n`/api/symbols/{ticker}/insider-summary/`.\n",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "news",
+                "insider",
+                ""
+              ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "query": [
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Opaque cursor from a prior response's `next_cursor`. Omit for the newest page.",
+                    "type": "text/plain"
+                  },
+                  "key": "cursor",
+                  "value": "<string>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Filter to insider news that mentions this ticker.",
+                    "type": "text/plain"
+                  },
+                  "key": "symbol",
+                  "value": "<string>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Items per page. Only `10` (default, every tier) and `50` (Pro keys only) are accepted — any other value returns 400, and requesting `50` without a Pro key returns 400. (This can only be one of 10,50)",
+                    "type": "text/plain"
+                  },
+                  "key": "page_size",
+                  "value": "10"
+                }
+              ],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "method": "GET",
+            "body": {},
+            "auth": null
+          },
+          "response": [
+            {
+              "id": "eeca74b8-55c4-4bd5-8b5c-a38b0865a55c",
+              "name": "A page of enriched insider-transaction articles.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "news",
+                    "insider",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Opaque cursor from a prior response's `next_cursor`. Omit for the newest page.",
+                        "type": "text/plain"
+                      },
+                      "key": "cursor",
+                      "value": "<string>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Filter to insider news that mentions this ticker.",
+                        "type": "text/plain"
+                      },
+                      "key": "symbol",
+                      "value": "<string>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Items per page. Only `10` (default, every tier) and `50` (Pro keys only) are accepted — any other value returns 400, and requesting `50` without a Pro key returns 400. (This can only be one of 10,50)",
+                        "type": "text/plain"
+                      },
+                      "key": "page_size",
+                      "value": "10"
+                    }
+                  ],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"results\": [\n    {\n      \"original\": {\n        \"uid\": \"5fdda974f664829d\",\n        \"title\": \"<string>\",\n        \"url\": \"<uri>\",\n        \"summary\": \"<string>\",\n        \"time_published\": \"<dateTime>\",\n        \"source\": \"<string>\",\n        \"id\": \"<integer>\",\n        \"authors\": [\n          \"<string>\",\n          \"<string>\"\n        ],\n        \"banner_image\": \"<uri>\",\n        \"source_domain\": \"<string>\",\n        \"topics\": [\n          {\n            \"topic\": \"<string>\",\n            \"relevance\": \"<float>\"\n          },\n          {\n            \"topic\": \"<string>\",\n            \"relevance\": \"<float>\"\n          }\n        ],\n        \"tickers_sentiment\": [\n          {\n            \"key_0\": \"string\",\n            \"key_1\": 1900.0666944868826,\n            \"key_2\": 2536\n          },\n          {\n            \"key_0\": \"string\"\n          }\n        ],\n        \"ownership_form\": \"indirect\",\n        \"created_at\": \"<dateTime>\",\n        \"updated_at\": \"<dateTime>\"\n      },\n      \"enrichment\": {\n        \"category\": \"macro_economy\",\n        \"tickers\": [\n          \"<string>\",\n          \"<string>\"\n        ],\n        \"relevance_score\": \"<integer>\",\n        \"ai_trading_insights\": {\n          \"ticker_analysis\": [\n            {\n              \"ticker\": \"<string>\",\n              \"relevance_context\": \"<string>\",\n              \"impact_analysis\": {\n                \"summary\": \"<string>\",\n                \"sentiment\": \"positive\",\n                \"price_impact_prediction\": \"<string>\",\n                \"confidence\": \"medium\",\n                \"reasoning\": \"<string>\"\n              }\n            },\n            {\n              \"ticker\": \"<string>\",\n              \"relevance_context\": \"<string>\",\n              \"impact_analysis\": {\n                \"summary\": \"<string>\",\n                \"sentiment\": \"negative\",\n                \"price_impact_prediction\": \"<string>\",\n                \"confidence\": \"low\",\n                \"reasoning\": \"<string>\"\n              }\n            }\n          ],\n          \"news_trading_value\": {\n            \"actionability_score\": \"medium\",\n            \"information_novelty\": \"<integer>\",\n            \"timing_relevance\": \"<string>\",\n            \"market_sentiment_alignment\": \"<string>\",\n            \"estimated_read_time\": \"<string>\"\n          },\n          \"indirect_market_effects\": {\n            \"sector_implications\": \"<string>\",\n            \"regional_market_impact\": \"<string>\",\n            \"global_market_relevance\": \"<string>\"\n          },\n          \"alternative_perspectives\": {\n            \"contrarian_view\": \"<string>\",\n            \"overlooked_factors\": \"<string>\"\n          }\n        },\n        \"news_context_enhancement\": {\n          \"background_context\": \"<string>\",\n          \"impact_analysis\": \"<string>\",\n          \"key_entities\": [\n            {\n              \"name\": \"<string>\",\n              \"type\": \"<string>\",\n              \"description\": \"<string>\"\n            },\n            {\n              \"name\": \"<string>\",\n              \"type\": \"<string>\",\n              \"description\": \"<string>\"\n            }\n          ],\n          \"market_relevance_summary\": \"<string>\",\n          \"estimated_read_time_minutes\": \"<integer>\"\n        }\n      },\n      \"story_id\": \"<string>\",\n      \"sources_count\": \"<integer>\",\n      \"sources\": [\n        \"<string>\",\n        \"<string>\"\n      ]\n    },\n    {\n      \"original\": {\n        \"uid\": \"edc2efddc35f2886\",\n        \"title\": \"<string>\",\n        \"url\": \"<uri>\",\n        \"summary\": \"<string>\",\n        \"time_published\": \"<dateTime>\",\n        \"source\": \"<string>\",\n        \"id\": \"<integer>\",\n        \"authors\": [\n          \"<string>\",\n          \"<string>\"\n        ],\n        \"banner_image\": \"<uri>\",\n        \"source_domain\": \"<string>\",\n        \"topics\": [\n          {\n            \"topic\": \"<string>\",\n            \"relevance\": \"<float>\"\n          },\n          {\n            \"topic\": \"<string>\",\n            \"relevance\": \"<float>\"\n          }\n        ],\n        \"tickers_sentiment\": [\n          {\n            \"key_0\": 7206.105861745606\n          },\n          {\n            \"key_0\": \"string\",\n            \"key_1\": \"string\"\n          }\n        ],\n        \"ownership_form\": \"indirect\",\n        \"created_at\": \"<dateTime>\",\n        \"updated_at\": \"<dateTime>\"\n      },\n      \"enrichment\": {\n        \"category\": \"mergers_acquisitions\",\n        \"tickers\": [\n          \"<string>\",\n          \"<string>\"\n        ],\n        \"relevance_score\": \"<integer>\",\n        \"ai_trading_insights\": {\n          \"ticker_analysis\": [\n            {\n              \"ticker\": \"<string>\",\n              \"relevance_context\": \"<string>\",\n              \"impact_analysis\": {\n                \"summary\": \"<string>\",\n                \"sentiment\": \"negative\",\n                \"price_impact_prediction\": \"<string>\",\n                \"confidence\": \"low\",\n                \"reasoning\": \"<string>\"\n              }\n            },\n            {\n              \"ticker\": \"<string>\",\n              \"relevance_context\": \"<string>\",\n              \"impact_analysis\": {\n                \"summary\": \"<string>\",\n                \"sentiment\": \"neutral\",\n                \"price_impact_prediction\": \"<string>\",\n                \"confidence\": \"low\",\n                \"reasoning\": \"<string>\"\n              }\n            }\n          ],\n          \"news_trading_value\": {\n            \"actionability_score\": \"high\",\n            \"information_novelty\": \"<integer>\",\n            \"timing_relevance\": \"<string>\",\n            \"market_sentiment_alignment\": \"<string>\",\n            \"estimated_read_time\": \"<string>\"\n          },\n          \"indirect_market_effects\": {\n            \"sector_implications\": \"<string>\",\n            \"regional_market_impact\": \"<string>\",\n            \"global_market_relevance\": \"<string>\"\n          },\n          \"alternative_perspectives\": {\n            \"contrarian_view\": \"<string>\",\n            \"overlooked_factors\": \"<string>\"\n          }\n        },\n        \"news_context_enhancement\": {\n          \"background_context\": \"<string>\",\n          \"impact_analysis\": \"<string>\",\n          \"key_entities\": [\n            {\n              \"name\": \"<string>\",\n              \"type\": \"<string>\",\n              \"description\": \"<string>\"\n            },\n            {\n              \"name\": \"<string>\",\n              \"type\": \"<string>\",\n              \"description\": \"<string>\"\n            }\n          ],\n          \"market_relevance_summary\": \"<string>\",\n          \"estimated_read_time_minutes\": \"<integer>\"\n        }\n      },\n      \"story_id\": \"<string>\",\n      \"sources_count\": \"<integer>\",\n      \"sources\": [\n        \"<string>\",\n        \"<string>\"\n      ]\n    }\n  ],\n  \"next_cursor\": \"<string>\"\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "203134a0-6900-4235-a280-677f769401df",
+              "name": "Invalid/expired cursor",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "news",
+                    "insider",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Opaque cursor from a prior response's `next_cursor`. Omit for the newest page.",
+                        "type": "text/plain"
+                      },
+                      "key": "cursor",
+                      "value": "<string>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Filter to insider news that mentions this ticker.",
+                        "type": "text/plain"
+                      },
+                      "key": "symbol",
+                      "value": "<string>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Items per page. Only `10` (default, every tier) and `50` (Pro keys only) are accepted — any other value returns 400, and requesting `50` without a Pro key returns 400. (This can only be one of 10,50)",
+                        "type": "text/plain"
+                      },
+                      "key": "page_size",
+                      "value": "10"
+                    }
+                  ],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [],
+              "cookie": [],
+              "_postman_previewlanguage": "text"
+            },
+            {
+              "id": "3046d035-f2f7-4acd-9651-d16c6502ab33",
+              "name": "Missing or invalid API key.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "news",
+                    "insider",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Opaque cursor from a prior response's `next_cursor`. Omit for the newest page.",
+                        "type": "text/plain"
+                      },
+                      "key": "cursor",
+                      "value": "<string>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Filter to insider news that mentions this ticker.",
+                        "type": "text/plain"
+                      },
+                      "key": "symbol",
+                      "value": "<string>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Items per page. Only `10` (default, every tier) and `50` (Pro keys only) are accepted — any other value returns 400, and requesting `50` without a Pro key returns 400. (This can only be one of 10,50)",
+                        "type": "text/plain"
+                      },
+                      "key": "page_size",
+                      "value": "10"
+                    }
+                  ],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "fa13dacd-11ec-4833-abaf-e4ac95749ac5",
+              "name": "The requested `cursor` points past your plan's news-archive horizon\n(Free 30 days, Basic 90; Pro is unlimited and never sees this). The\nbody's `extra` carries `reason: archive_horizon`, your `tier`, the\nplan's `archive_days`, and an `upgrade` block with the higher tiers'\ncaps and the pricing URL. First pages and cursors within the horizon\nare unaffected.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "news",
+                    "insider",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Opaque cursor from a prior response's `next_cursor`. Omit for the newest page.",
+                        "type": "text/plain"
+                      },
+                      "key": "cursor",
+                      "value": "<string>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Filter to insider news that mentions this ticker.",
+                        "type": "text/plain"
+                      },
+                      "key": "symbol",
+                      "value": "<string>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Items per page. Only `10` (default, every tier) and `50` (Pro keys only) are accepted — any other value returns 400, and requesting `50` without a Pro key returns 400. (This can only be one of 10,50)",
+                        "type": "text/plain"
+                      },
+                      "key": "page_size",
+                      "value": "10"
+                    }
+                  ],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "6c7a35a9-ac90-4192-97ef-06b61c9f4d1c",
+              "name": "Rate limit exceeded — either the per-minute burst cap or the per-day\nvolume cap. The `Retry-After` header tells you how long to wait (a burst\nblock is short, ≤60s; a day-cap block is capped at 3600s — the true reset\nis `X-RateLimit-Reset`). The `X-RateLimit-*` trio shows the daily volume\nbudget. The body's `extra` names your tier, its `limit_per_minute` /\n`limit_per_day`, `retry_after_seconds`, and — below Pro — an `upgrade`\nblock with the higher tiers' caps and the pricing URL.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "news",
+                    "insider",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Opaque cursor from a prior response's `next_cursor`. Omit for the newest page.",
+                        "type": "text/plain"
+                      },
+                      "key": "cursor",
+                      "value": "<string>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Filter to insider news that mentions this ticker.",
+                        "type": "text/plain"
+                      },
+                      "key": "symbol",
+                      "value": "<string>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Items per page. Only `10` (default, every tier) and `50` (Pro keys only) are accepted — any other value returns 400, and requesting `50` without a Pro key returns 400. (This can only be one of 10,50)",
+                        "type": "text/plain"
+                      },
+                      "key": "page_size",
+                      "value": "10"
+                    }
+                  ],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Too Many Requests",
+              "code": 429,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Seconds to wait before retrying (burst ≤60s; day cap ≤3600s).",
+                    "type": "text/plain"
+                  },
+                  "key": "Retry-After",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "The tier's per-day request volume.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Limit",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Requests left in today's volume budget.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Remaining",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Epoch seconds of the next 00:00 UTC reset.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Reset",
+                  "value": "<integer>"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            }
+          ],
+          "event": [],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          }
+        },
+        {
+          "id": "dea35b1a-0e1d-41cf-a1d0-b59e53ced06f",
+          "name": "Get a news article by UID",
+          "request": {
+            "name": "Get a news article by UID",
+            "description": {},
+            "url": {
+              "path": [
+                "api",
+                "news",
+                ":uid",
+                ""
+              ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "type": "any",
+                  "value": "36f506f0fa5960f9",
+                  "key": "uid",
+                  "disabled": false,
+                  "description": {
+                    "content": "(Required) ",
+                    "type": "text/plain"
+                  }
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "method": "GET",
+            "body": {},
+            "auth": null
+          },
+          "response": [
+            {
+              "id": "965c2414-2aee-4a17-a7e0-cf930127e285",
+              "name": "A single enriched article.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "news",
+                    ":uid",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "36f506f0fa5960f9",
+                      "key": "uid"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"original\": {\n    \"uid\": \"ad9732781b5192f4\",\n    \"title\": \"<string>\",\n    \"url\": \"<uri>\",\n    \"summary\": \"<string>\",\n    \"time_published\": \"<dateTime>\",\n    \"source\": \"<string>\",\n    \"id\": \"<integer>\",\n    \"authors\": [\n      \"<string>\",\n      \"<string>\"\n    ],\n    \"banner_image\": \"<uri>\",\n    \"source_domain\": \"<string>\",\n    \"topics\": [\n      {\n        \"topic\": \"<string>\",\n        \"relevance\": \"<float>\"\n      },\n      {\n        \"topic\": \"<string>\",\n        \"relevance\": \"<float>\"\n      }\n    ],\n    \"tickers_sentiment\": [\n      {\n        \"key_0\": \"string\",\n        \"key_1\": false\n      },\n      {\n        \"key_0\": 1817,\n        \"key_1\": \"string\"\n      }\n    ],\n    \"ownership_form\": \"indirect\",\n    \"created_at\": \"<dateTime>\",\n    \"updated_at\": \"<dateTime>\"\n  },\n  \"enrichment\": {\n    \"category\": \"regulation\",\n    \"tickers\": [\n      \"<string>\",\n      \"<string>\"\n    ],\n    \"relevance_score\": \"<integer>\",\n    \"ai_trading_insights\": {\n      \"ticker_analysis\": [\n        {\n          \"ticker\": \"<string>\",\n          \"relevance_context\": \"<string>\",\n          \"impact_analysis\": {\n            \"summary\": \"<string>\",\n            \"sentiment\": \"negative\",\n            \"price_impact_prediction\": \"<string>\",\n            \"confidence\": \"medium\",\n            \"reasoning\": \"<string>\"\n          }\n        },\n        {\n          \"ticker\": \"<string>\",\n          \"relevance_context\": \"<string>\",\n          \"impact_analysis\": {\n            \"summary\": \"<string>\",\n            \"sentiment\": \"positive\",\n            \"price_impact_prediction\": \"<string>\",\n            \"confidence\": \"medium\",\n            \"reasoning\": \"<string>\"\n          }\n        }\n      ],\n      \"news_trading_value\": {\n        \"actionability_score\": \"low\",\n        \"information_novelty\": \"<integer>\",\n        \"timing_relevance\": \"<string>\",\n        \"market_sentiment_alignment\": \"<string>\",\n        \"estimated_read_time\": \"<string>\"\n      },\n      \"indirect_market_effects\": {\n        \"sector_implications\": \"<string>\",\n        \"regional_market_impact\": \"<string>\",\n        \"global_market_relevance\": \"<string>\"\n      },\n      \"alternative_perspectives\": {\n        \"contrarian_view\": \"<string>\",\n        \"overlooked_factors\": \"<string>\"\n      }\n    },\n    \"news_context_enhancement\": {\n      \"background_context\": \"<string>\",\n      \"impact_analysis\": \"<string>\",\n      \"key_entities\": [\n        {\n          \"name\": \"<string>\",\n          \"type\": \"<string>\",\n          \"description\": \"<string>\"\n        },\n        {\n          \"name\": \"<string>\",\n          \"type\": \"<string>\",\n          \"description\": \"<string>\"\n        }\n      ],\n      \"market_relevance_summary\": \"<string>\",\n      \"estimated_read_time_minutes\": \"<integer>\"\n    }\n  },\n  \"story_id\": \"<string>\",\n  \"sources_count\": \"<integer>\",\n  \"sources\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "aa632c45-fa47-49fd-ac98-0b6c289a6b66",
+              "name": "Missing or invalid API key.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "news",
+                    ":uid",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "36f506f0fa5960f9",
+                      "key": "uid"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "6f6cbba1-4061-4bae-b3a1-4d5959a26c74",
+              "name": "No item with that identifier.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "news",
+                    ":uid",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "36f506f0fa5960f9",
+                      "key": "uid"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "cd0e3b42-eba6-4800-9765-d53d906a4da9",
+              "name": "Rate limit exceeded — either the per-minute burst cap or the per-day\nvolume cap. The `Retry-After` header tells you how long to wait (a burst\nblock is short, ≤60s; a day-cap block is capped at 3600s — the true reset\nis `X-RateLimit-Reset`). The `X-RateLimit-*` trio shows the daily volume\nbudget. The body's `extra` names your tier, its `limit_per_minute` /\n`limit_per_day`, `retry_after_seconds`, and — below Pro — an `upgrade`\nblock with the higher tiers' caps and the pricing URL.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "news",
+                    ":uid",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "36f506f0fa5960f9",
+                      "key": "uid"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Too Many Requests",
+              "code": 429,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Seconds to wait before retrying (burst ≤60s; day cap ≤3600s).",
+                    "type": "text/plain"
+                  },
+                  "key": "Retry-After",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "The tier's per-day request volume.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Limit",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Requests left in today's volume budget.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Remaining",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Epoch seconds of the next 00:00 UTC reset.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Reset",
+                  "value": "<integer>"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            }
+          ],
+          "event": [],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          }
+        },
+        {
+          "id": "e9c960b0-704f-4ca6-819e-1780d9d83657",
+          "name": "Articles related to one article",
+          "request": {
+            "name": "Articles related to one article",
+            "description": {
+              "content": "Up to 6 articles related to the given article: fresh articles sharing\na ticker first, then same-category recents as backfill. Same enriched\nshape and `relevance_score >= 4` filtering as `/api/news/`; insider\n(SEC Form 4) rows are excluded unless the base article is itself\ninsider. No pagination — the list is a fixed-size block.\n",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "news",
+                ":uid",
+                "related",
+                ""
+              ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "type": "any",
+                  "value": "36f506f0fa5960f9",
+                  "key": "uid",
+                  "disabled": false,
+                  "description": {
+                    "content": "(Required) ",
+                    "type": "text/plain"
+                  }
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "method": "GET",
+            "body": {},
+            "auth": null
+          },
+          "response": [
+            {
+              "id": "48732576-011b-46f8-873f-ef9c6a008d2f",
+              "name": "Related enriched articles (possibly fewer than 6).",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "news",
+                    ":uid",
+                    "related",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "36f506f0fa5960f9",
+                      "key": "uid"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"results\": [\n    {\n      \"original\": {\n        \"uid\": \"cbd4b5df3ca6df87\",\n        \"title\": \"<string>\",\n        \"url\": \"<uri>\",\n        \"summary\": \"<string>\",\n        \"time_published\": \"<dateTime>\",\n        \"source\": \"<string>\",\n        \"id\": \"<integer>\",\n        \"authors\": [\n          \"<string>\",\n          \"<string>\"\n        ],\n        \"banner_image\": \"<uri>\",\n        \"source_domain\": \"<string>\",\n        \"topics\": [\n          {\n            \"topic\": \"<string>\",\n            \"relevance\": \"<float>\"\n          },\n          {\n            \"topic\": \"<string>\",\n            \"relevance\": \"<float>\"\n          }\n        ],\n        \"tickers_sentiment\": [\n          {\n            \"key_0\": false,\n            \"key_1\": \"string\",\n            \"key_2\": false\n          },\n          {\n            \"key_0\": 6070.599095743807\n          }\n        ],\n        \"ownership_form\": \"indirect\",\n        \"created_at\": \"<dateTime>\",\n        \"updated_at\": \"<dateTime>\"\n      },\n      \"enrichment\": {\n        \"category\": \"other\",\n        \"tickers\": [\n          \"<string>\",\n          \"<string>\"\n        ],\n        \"relevance_score\": \"<integer>\",\n        \"ai_trading_insights\": {\n          \"ticker_analysis\": [\n            {\n              \"ticker\": \"<string>\",\n              \"relevance_context\": \"<string>\",\n              \"impact_analysis\": {\n                \"summary\": \"<string>\",\n                \"sentiment\": \"neutral\",\n                \"price_impact_prediction\": \"<string>\",\n                \"confidence\": \"medium\",\n                \"reasoning\": \"<string>\"\n              }\n            },\n            {\n              \"ticker\": \"<string>\",\n              \"relevance_context\": \"<string>\",\n              \"impact_analysis\": {\n                \"summary\": \"<string>\",\n                \"sentiment\": \"neutral\",\n                \"price_impact_prediction\": \"<string>\",\n                \"confidence\": \"high\",\n                \"reasoning\": \"<string>\"\n              }\n            }\n          ],\n          \"news_trading_value\": {\n            \"actionability_score\": \"low\",\n            \"information_novelty\": \"<integer>\",\n            \"timing_relevance\": \"<string>\",\n            \"market_sentiment_alignment\": \"<string>\",\n            \"estimated_read_time\": \"<string>\"\n          },\n          \"indirect_market_effects\": {\n            \"sector_implications\": \"<string>\",\n            \"regional_market_impact\": \"<string>\",\n            \"global_market_relevance\": \"<string>\"\n          },\n          \"alternative_perspectives\": {\n            \"contrarian_view\": \"<string>\",\n            \"overlooked_factors\": \"<string>\"\n          }\n        },\n        \"news_context_enhancement\": {\n          \"background_context\": \"<string>\",\n          \"impact_analysis\": \"<string>\",\n          \"key_entities\": [\n            {\n              \"name\": \"<string>\",\n              \"type\": \"<string>\",\n              \"description\": \"<string>\"\n            },\n            {\n              \"name\": \"<string>\",\n              \"type\": \"<string>\",\n              \"description\": \"<string>\"\n            }\n          ],\n          \"market_relevance_summary\": \"<string>\",\n          \"estimated_read_time_minutes\": \"<integer>\"\n        }\n      },\n      \"story_id\": \"<string>\",\n      \"sources_count\": \"<integer>\",\n      \"sources\": [\n        \"<string>\",\n        \"<string>\"\n      ]\n    },\n    {\n      \"original\": {\n        \"uid\": \"d1a2af546a43f839\",\n        \"title\": \"<string>\",\n        \"url\": \"<uri>\",\n        \"summary\": \"<string>\",\n        \"time_published\": \"<dateTime>\",\n        \"source\": \"<string>\",\n        \"id\": \"<integer>\",\n        \"authors\": [\n          \"<string>\",\n          \"<string>\"\n        ],\n        \"banner_image\": \"<uri>\",\n        \"source_domain\": \"<string>\",\n        \"topics\": [\n          {\n            \"topic\": \"<string>\",\n            \"relevance\": \"<float>\"\n          },\n          {\n            \"topic\": \"<string>\",\n            \"relevance\": \"<float>\"\n          }\n        ],\n        \"tickers_sentiment\": [\n          {\n            \"key_0\": \"string\"\n          },\n          {\n            \"key_0\": true,\n            \"key_1\": false,\n            \"key_2\": 4322.2397799732325\n          }\n        ],\n        \"ownership_form\": \"direct\",\n        \"created_at\": \"<dateTime>\",\n        \"updated_at\": \"<dateTime>\"\n      },\n      \"enrichment\": {\n        \"category\": \"earnings\",\n        \"tickers\": [\n          \"<string>\",\n          \"<string>\"\n        ],\n        \"relevance_score\": \"<integer>\",\n        \"ai_trading_insights\": {\n          \"ticker_analysis\": [\n            {\n              \"ticker\": \"<string>\",\n              \"relevance_context\": \"<string>\",\n              \"impact_analysis\": {\n                \"summary\": \"<string>\",\n                \"sentiment\": \"positive\",\n                \"price_impact_prediction\": \"<string>\",\n                \"confidence\": \"low\",\n                \"reasoning\": \"<string>\"\n              }\n            },\n            {\n              \"ticker\": \"<string>\",\n              \"relevance_context\": \"<string>\",\n              \"impact_analysis\": {\n                \"summary\": \"<string>\",\n                \"sentiment\": \"negative\",\n                \"price_impact_prediction\": \"<string>\",\n                \"confidence\": \"low\",\n                \"reasoning\": \"<string>\"\n              }\n            }\n          ],\n          \"news_trading_value\": {\n            \"actionability_score\": \"medium\",\n            \"information_novelty\": \"<integer>\",\n            \"timing_relevance\": \"<string>\",\n            \"market_sentiment_alignment\": \"<string>\",\n            \"estimated_read_time\": \"<string>\"\n          },\n          \"indirect_market_effects\": {\n            \"sector_implications\": \"<string>\",\n            \"regional_market_impact\": \"<string>\",\n            \"global_market_relevance\": \"<string>\"\n          },\n          \"alternative_perspectives\": {\n            \"contrarian_view\": \"<string>\",\n            \"overlooked_factors\": \"<string>\"\n          }\n        },\n        \"news_context_enhancement\": {\n          \"background_context\": \"<string>\",\n          \"impact_analysis\": \"<string>\",\n          \"key_entities\": [\n            {\n              \"name\": \"<string>\",\n              \"type\": \"<string>\",\n              \"description\": \"<string>\"\n            },\n            {\n              \"name\": \"<string>\",\n              \"type\": \"<string>\",\n              \"description\": \"<string>\"\n            }\n          ],\n          \"market_relevance_summary\": \"<string>\",\n          \"estimated_read_time_minutes\": \"<integer>\"\n        }\n      },\n      \"story_id\": \"<string>\",\n      \"sources_count\": \"<integer>\",\n      \"sources\": [\n        \"<string>\",\n        \"<string>\"\n      ]\n    }\n  ]\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "a71f9b2e-96bc-48b4-a6a5-5ef16752cb59",
+              "name": "Missing or invalid API key.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "news",
+                    ":uid",
+                    "related",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "36f506f0fa5960f9",
+                      "key": "uid"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "fa185d82-fb4d-43ed-b42e-1e31a262c1c7",
+              "name": "No item with that identifier.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "news",
+                    ":uid",
+                    "related",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "36f506f0fa5960f9",
+                      "key": "uid"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "d5e60c20-9684-4684-a7f4-bc23968ac178",
+              "name": "Rate limit exceeded — either the per-minute burst cap or the per-day\nvolume cap. The `Retry-After` header tells you how long to wait (a burst\nblock is short, ≤60s; a day-cap block is capped at 3600s — the true reset\nis `X-RateLimit-Reset`). The `X-RateLimit-*` trio shows the daily volume\nbudget. The body's `extra` names your tier, its `limit_per_minute` /\n`limit_per_day`, `retry_after_seconds`, and — below Pro — an `upgrade`\nblock with the higher tiers' caps and the pricing URL.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "news",
+                    ":uid",
+                    "related",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "36f506f0fa5960f9",
+                      "key": "uid"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Too Many Requests",
+              "code": 429,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Seconds to wait before retrying (burst ≤60s; day cap ≤3600s).",
+                    "type": "text/plain"
+                  },
+                  "key": "Retry-After",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "The tier's per-day request volume.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Limit",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Requests left in today's volume budget.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Remaining",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Epoch seconds of the next 00:00 UTC reset.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Reset",
+                  "value": "<integer>"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            }
+          ],
+          "event": [],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "symbols",
+      "description": "Active equity, crypto, and foreign symbols (tickers).",
+      "item": [
+        {
+          "id": "716af1db-a496-4d82-bd20-bf000d6e3684",
+          "name": "List active tickers",
+          "request": {
+            "name": "List active tickers",
+            "description": {
+              "content": "All active symbols (US equities, crypto, and foreign listings), alphabetical by ticker. ~10k entries — cache aggressively, or slice with the optional `limit`/`offset` params (the response stays a bare array either way).",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "symbols",
+                ""
+              ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "query": [
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Return at most this many symbols. Omit for the full list.",
+                    "type": "text/plain"
+                  },
+                  "key": "limit",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Skip this many symbols from the start of the list.",
+                    "type": "text/plain"
+                  },
+                  "key": "offset",
+                  "value": "0"
+                }
+              ],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "method": "GET",
+            "body": {},
+            "auth": null
+          },
+          "response": [
+            {
+              "id": "32d1ae4d-2f16-451c-8373-c0510109850c",
+              "name": "List of active symbols.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Return at most this many symbols. Omit for the full list.",
+                        "type": "text/plain"
+                      },
+                      "key": "limit",
+                      "value": "<integer>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Skip this many symbols from the start of the list.",
+                        "type": "text/plain"
+                      },
+                      "key": "offset",
+                      "value": "0"
+                    }
+                  ],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "[\n  {\n    \"symbol\": \"<string>\",\n    \"name\": \"<string>\",\n    \"asset_type\": \"<string>\",\n    \"exchange\": \"<string>\",\n    \"sector\": \"<string>\",\n    \"industry\": \"<string>\",\n    \"description\": \"<string>\",\n    \"website\": \"<uri>\",\n    \"country\": \"<string>\",\n    \"currency\": \"<string>\"\n  },\n  {\n    \"symbol\": \"<string>\",\n    \"name\": \"<string>\",\n    \"asset_type\": \"<string>\",\n    \"exchange\": \"<string>\",\n    \"sector\": \"<string>\",\n    \"industry\": \"<string>\",\n    \"description\": \"<string>\",\n    \"website\": \"<uri>\",\n    \"country\": \"<string>\",\n    \"currency\": \"<string>\"\n  }\n]",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "f8c50eff-72b2-4705-b678-4971d5d9ec9b",
+              "name": "Out-of-range or unknown query parameter.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Return at most this many symbols. Omit for the full list.",
+                        "type": "text/plain"
+                      },
+                      "key": "limit",
+                      "value": "<integer>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Skip this many symbols from the start of the list.",
+                        "type": "text/plain"
+                      },
+                      "key": "offset",
+                      "value": "0"
+                    }
+                  ],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [],
+              "cookie": [],
+              "_postman_previewlanguage": "text"
+            },
+            {
+              "id": "b1e13841-a83f-4aa8-878d-028a5d1884ab",
+              "name": "Missing or invalid API key.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Return at most this many symbols. Omit for the full list.",
+                        "type": "text/plain"
+                      },
+                      "key": "limit",
+                      "value": "<integer>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Skip this many symbols from the start of the list.",
+                        "type": "text/plain"
+                      },
+                      "key": "offset",
+                      "value": "0"
+                    }
+                  ],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "497b9a9e-b487-4f9a-a2b0-c28fbeeb2684",
+              "name": "Rate limit exceeded — either the per-minute burst cap or the per-day\nvolume cap. The `Retry-After` header tells you how long to wait (a burst\nblock is short, ≤60s; a day-cap block is capped at 3600s — the true reset\nis `X-RateLimit-Reset`). The `X-RateLimit-*` trio shows the daily volume\nbudget. The body's `extra` names your tier, its `limit_per_minute` /\n`limit_per_day`, `retry_after_seconds`, and — below Pro — an `upgrade`\nblock with the higher tiers' caps and the pricing URL.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Return at most this many symbols. Omit for the full list.",
+                        "type": "text/plain"
+                      },
+                      "key": "limit",
+                      "value": "<integer>"
+                    },
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "Skip this many symbols from the start of the list.",
+                        "type": "text/plain"
+                      },
+                      "key": "offset",
+                      "value": "0"
+                    }
+                  ],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Too Many Requests",
+              "code": 429,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Seconds to wait before retrying (burst ≤60s; day cap ≤3600s).",
+                    "type": "text/plain"
+                  },
+                  "key": "Retry-After",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "The tier's per-day request volume.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Limit",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Requests left in today's volume budget.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Remaining",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Epoch seconds of the next 00:00 UTC reset.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Reset",
+                  "value": "<integer>"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            }
+          ],
+          "event": [],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          }
+        },
+        {
+          "id": "60dcc393-d210-4ab6-a220-030b8478b4a0",
+          "name": "Symbol detail",
+          "request": {
+            "name": "Symbol detail",
+            "description": {},
+            "url": {
+              "path": [
+                "api",
+                "symbols",
+                ":ticker",
+                ""
+              ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "type": "any",
+                  "value": "A2",
+                  "key": "ticker",
+                  "disabled": false,
+                  "description": {
+                    "content": "(Required) ",
+                    "type": "text/plain"
+                  }
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "method": "GET",
+            "body": {},
+            "auth": null
+          },
+          "response": [
+            {
+              "id": "58dbc2c4-cc9c-4263-a9e6-2dd046612a66",
+              "name": "Symbol with extended metadata.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    ":ticker",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "A2",
+                      "key": "ticker"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"symbol\": \"<string>\",\n  \"name\": \"<string>\",\n  \"asset_type\": \"<string>\",\n  \"exchange\": \"<string>\",\n  \"sector\": \"<string>\",\n  \"industry\": \"<string>\",\n  \"description\": \"<string>\",\n  \"website\": \"<uri>\",\n  \"country\": \"<string>\",\n  \"currency\": \"<string>\"\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "2f86cb1b-edd7-49fc-a6ae-055565f5f646",
+              "name": "Missing or invalid API key.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    ":ticker",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "A2",
+                      "key": "ticker"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "eae6cc6d-bab3-4a3e-bae6-13031100f2a7",
+              "name": "No item with that identifier.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    ":ticker",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "A2",
+                      "key": "ticker"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "51777dd0-6b85-4078-ad4a-f587ac438a70",
+              "name": "Rate limit exceeded — either the per-minute burst cap or the per-day\nvolume cap. The `Retry-After` header tells you how long to wait (a burst\nblock is short, ≤60s; a day-cap block is capped at 3600s — the true reset\nis `X-RateLimit-Reset`). The `X-RateLimit-*` trio shows the daily volume\nbudget. The body's `extra` names your tier, its `limit_per_minute` /\n`limit_per_day`, `retry_after_seconds`, and — below Pro — an `upgrade`\nblock with the higher tiers' caps and the pricing URL.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    ":ticker",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "A2",
+                      "key": "ticker"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Too Many Requests",
+              "code": 429,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Seconds to wait before retrying (burst ≤60s; day cap ≤3600s).",
+                    "type": "text/plain"
+                  },
+                  "key": "Retry-After",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "The tier's per-day request volume.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Limit",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Requests left in today's volume budget.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Remaining",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Epoch seconds of the next 00:00 UTC reset.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Reset",
+                  "value": "<integer>"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            }
+          ],
+          "event": [],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          }
+        },
+        {
+          "id": "96abb108-02cc-4b01-9f0e-5503933b405c",
+          "name": "7-day AI sentiment rollup for one ticker",
+          "request": {
+            "name": "7-day AI sentiment rollup for one ticker",
+            "description": {
+              "content": "Counts of bullish / neutral / bearish per-ticker sentiment calls from\nthe enriched news flow over the trailing 7 days, plus per-day buckets.\nInsider (SEC Form 4) template rows are excluded — this reflects press\ncoverage, not filings.\n",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "symbols",
+                ":ticker",
+                "sentiment-summary",
+                ""
+              ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "type": "any",
+                  "value": "A2",
+                  "key": "ticker",
+                  "disabled": false,
+                  "description": {
+                    "content": "(Required) ",
+                    "type": "text/plain"
+                  }
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "method": "GET",
+            "body": {},
+            "auth": null
+          },
+          "response": [
+            {
+              "id": "5c6ca39a-be13-442c-893e-f6ec0ec35942",
+              "name": "Sentiment counts for the window. A well-formed but unknown ticker returns zeros rather than 404.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    ":ticker",
+                    "sentiment-summary",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "A2",
+                      "key": "ticker"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"ticker\": \"<string>\",\n  \"days\": \"<integer>\",\n  \"total\": \"<integer>\",\n  \"bullish\": \"<integer>\",\n  \"neutral\": \"<integer>\",\n  \"bearish\": \"<integer>\",\n  \"daily\": [\n    {\n      \"day\": \"<date>\",\n      \"bullish\": \"<integer>\",\n      \"neutral\": \"<integer>\",\n      \"bearish\": \"<integer>\"\n    },\n    {\n      \"day\": \"<date>\",\n      \"bullish\": \"<integer>\",\n      \"neutral\": \"<integer>\",\n      \"bearish\": \"<integer>\"\n    }\n  ]\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "e085f186-c12c-4fda-9fa6-50f867ef4519",
+              "name": "Malformed ticker.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    ":ticker",
+                    "sentiment-summary",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "A2",
+                      "key": "ticker"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [],
+              "cookie": [],
+              "_postman_previewlanguage": "text"
+            },
+            {
+              "id": "46caa117-0f14-4cd8-af48-cc3d1a49653d",
+              "name": "Missing or invalid API key.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    ":ticker",
+                    "sentiment-summary",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "A2",
+                      "key": "ticker"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "5be0c895-3979-44ad-8175-d4737c441fe3",
+              "name": "Rate limit exceeded — either the per-minute burst cap or the per-day\nvolume cap. The `Retry-After` header tells you how long to wait (a burst\nblock is short, ≤60s; a day-cap block is capped at 3600s — the true reset\nis `X-RateLimit-Reset`). The `X-RateLimit-*` trio shows the daily volume\nbudget. The body's `extra` names your tier, its `limit_per_minute` /\n`limit_per_day`, `retry_after_seconds`, and — below Pro — an `upgrade`\nblock with the higher tiers' caps and the pricing URL.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    ":ticker",
+                    "sentiment-summary",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "A2",
+                      "key": "ticker"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Too Many Requests",
+              "code": 429,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Seconds to wait before retrying (burst ≤60s; day cap ≤3600s).",
+                    "type": "text/plain"
+                  },
+                  "key": "Retry-After",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "The tier's per-day request volume.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Limit",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Requests left in today's volume budget.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Remaining",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Epoch seconds of the next 00:00 UTC reset.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Reset",
+                  "value": "<integer>"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            }
+          ],
+          "event": [],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          }
+        },
+        {
+          "id": "b00e0f17-1d0e-48dd-94d1-1c490158e9a8",
+          "name": "30-day insider-transaction rollup for one ticker",
+          "request": {
+            "name": "30-day insider-transaction rollup for one ticker",
+            "description": {
+              "content": "Aggregated SEC Form 4 activity over the trailing 30 days: buy/sell\ntransaction counts, dollar volumes, the share of transactions executed\nunder pre-arranged 10b5-1 plans, and the most active insiders ranked\nby absolute net value (buys minus sells).\n",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "symbols",
+                ":ticker",
+                "insider-summary",
+                ""
+              ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "type": "any",
+                  "value": "A2",
+                  "key": "ticker",
+                  "disabled": false,
+                  "description": {
+                    "content": "(Required) ",
+                    "type": "text/plain"
+                  }
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "method": "GET",
+            "body": {},
+            "auth": null
+          },
+          "response": [
+            {
+              "id": "febb3aa2-8d3f-4c4f-abd7-839d224efb89",
+              "name": "Insider activity stats for the window. A well-formed but unknown ticker returns zeros rather than 404.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    ":ticker",
+                    "insider-summary",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "A2",
+                      "key": "ticker"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"ticker\": \"<string>\",\n  \"days\": \"<integer>\",\n  \"total_transactions\": \"<integer>\",\n  \"buy_count\": \"<integer>\",\n  \"sell_count\": \"<integer>\",\n  \"pct_10b5_1\": \"<integer>\",\n  \"top_insiders\": [\n    {\n      \"name\": \"<string>\",\n      \"title\": \"<string>\",\n      \"transaction_count\": \"<integer>\",\n      \"net_value\": \"<string>\"\n    },\n    {\n      \"name\": \"<string>\",\n      \"title\": \"<string>\",\n      \"transaction_count\": \"<integer>\",\n      \"net_value\": \"<string>\"\n    }\n  ],\n  \"buy_value_usd\": \"<string>\",\n  \"sell_value_usd\": \"<string>\"\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "f4c74b3d-6f2e-4f17-b4d4-bfb5eca528e6",
+              "name": "Malformed ticker.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    ":ticker",
+                    "insider-summary",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "A2",
+                      "key": "ticker"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [],
+              "cookie": [],
+              "_postman_previewlanguage": "text"
+            },
+            {
+              "id": "b53e007d-bcaa-49c8-a2b9-456901fbb164",
+              "name": "Missing or invalid API key.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    ":ticker",
+                    "insider-summary",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "A2",
+                      "key": "ticker"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "c6299689-b2c5-43cb-bb41-c6d4d19a39d8",
+              "name": "Rate limit exceeded — either the per-minute burst cap or the per-day\nvolume cap. The `Retry-After` header tells you how long to wait (a burst\nblock is short, ≤60s; a day-cap block is capped at 3600s — the true reset\nis `X-RateLimit-Reset`). The `X-RateLimit-*` trio shows the daily volume\nbudget. The body's `extra` names your tier, its `limit_per_minute` /\n`limit_per_day`, `retry_after_seconds`, and — below Pro — an `upgrade`\nblock with the higher tiers' caps and the pricing URL.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    ":ticker",
+                    "insider-summary",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "A2",
+                      "key": "ticker"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Too Many Requests",
+              "code": 429,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Seconds to wait before retrying (burst ≤60s; day cap ≤3600s).",
+                    "type": "text/plain"
+                  },
+                  "key": "Retry-After",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "The tier's per-day request volume.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Limit",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Requests left in today's volume budget.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Remaining",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Epoch seconds of the next 00:00 UTC reset.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Reset",
+                  "value": "<integer>"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            }
+          ],
+          "event": [],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          }
+        },
+        {
+          "id": "c55ac15a-cd6f-406a-82f5-1f0d0940884e",
+          "name": "Related tickers for one ticker",
+          "request": {
+            "name": "Related tickers for one ticker",
+            "description": {
+              "content": "Other companies in the same industry (widening to the broader sector\nwhen the industry is thin) that carry recent enriched news, most\nrecently covered first. Powers the \"Related tickers\" links on the stock\nhub pages.\n",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "symbols",
+                ":ticker",
+                "peers",
+                ""
+              ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "type": "any",
+                  "value": "A2",
+                  "key": "ticker",
+                  "disabled": false,
+                  "description": {
+                    "content": "(Required) ",
+                    "type": "text/plain"
+                  }
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "method": "GET",
+            "body": {},
+            "auth": null
+          },
+          "response": [
+            {
+              "id": "894c491f-d548-45c7-b92f-cbff63974f9c",
+              "name": "Up to ten related tickers. A well-formed but unknown ticker, or one with no peers carrying recent news, returns an empty list.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    ":ticker",
+                    "peers",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "A2",
+                      "key": "ticker"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"ticker\": \"<string>\",\n  \"group\": \"<string>\",\n  \"group_kind\": \"\",\n  \"peers\": [\n    {\n      \"ticker\": \"<string>\",\n      \"name\": \"<string>\"\n    },\n    {\n      \"ticker\": \"<string>\",\n      \"name\": \"<string>\"\n    }\n  ]\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "72f1aacd-fb2f-4b7c-8508-02bf8e1ef1c3",
+              "name": "Malformed ticker.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    ":ticker",
+                    "peers",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "A2",
+                      "key": "ticker"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [],
+              "cookie": [],
+              "_postman_previewlanguage": "text"
+            },
+            {
+              "id": "efcf516d-f228-4221-99c6-a18561691760",
+              "name": "Missing or invalid API key.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    ":ticker",
+                    "peers",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "A2",
+                      "key": "ticker"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "7013a6a2-d3ea-4772-b953-f2d261633ce7",
+              "name": "Rate limit exceeded — either the per-minute burst cap or the per-day\nvolume cap. The `Retry-After` header tells you how long to wait (a burst\nblock is short, ≤60s; a day-cap block is capped at 3600s — the true reset\nis `X-RateLimit-Reset`). The `X-RateLimit-*` trio shows the daily volume\nbudget. The body's `extra` names your tier, its `limit_per_minute` /\n`limit_per_day`, `retry_after_seconds`, and — below Pro — an `upgrade`\nblock with the higher tiers' caps and the pricing URL.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    ":ticker",
+                    "peers",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "A2",
+                      "key": "ticker"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Too Many Requests",
+              "code": 429,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Seconds to wait before retrying (burst ≤60s; day cap ≤3600s).",
+                    "type": "text/plain"
+                  },
+                  "key": "Retry-After",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "The tier's per-day request volume.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Limit",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Requests left in today's volume budget.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Remaining",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Epoch seconds of the next 00:00 UTC reset.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Reset",
+                  "value": "<integer>"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            }
+          ],
+          "event": [],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          }
+        },
+        {
+          "id": "79f8b78d-bb5a-40f9-b72d-63fc44b98f82",
+          "name": "Stock directory — most-covered tickers and sector cards",
+          "request": {
+            "name": "Stock directory — most-covered tickers and sector cards",
+            "description": {
+              "content": "The hub index behind /stocks: the globally most-covered tickers over\nthe trailing window, plus one card per sector (size + its busiest\nnames). Ranked by recent enriched-news coverage.\n",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "symbols",
+                "directory",
+                ""
+              ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "method": "GET",
+            "body": {},
+            "auth": null
+          },
+          "response": [
+            {
+              "id": "f636a4ca-91dc-4b9f-97e2-d790de253ea6",
+              "name": "Most-active tickers and sector cards.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    "directory",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"most_active\": [\n    {\n      \"ticker\": \"<string>\",\n      \"name\": \"<string>\",\n      \"news_count\": \"<integer>\"\n    },\n    {\n      \"ticker\": \"<string>\",\n      \"name\": \"<string>\",\n      \"news_count\": \"<integer>\"\n    }\n  ],\n  \"sectors\": [\n    {\n      \"sector\": \"<string>\",\n      \"slug\": \"<string>\",\n      \"count\": \"<integer>\",\n      \"top\": [\n        {\n          \"ticker\": \"<string>\",\n          \"name\": \"<string>\",\n          \"news_count\": \"<integer>\"\n        },\n        {\n          \"ticker\": \"<string>\",\n          \"name\": \"<string>\",\n          \"news_count\": \"<integer>\"\n        }\n      ]\n    },\n    {\n      \"sector\": \"<string>\",\n      \"slug\": \"<string>\",\n      \"count\": \"<integer>\",\n      \"top\": [\n        {\n          \"ticker\": \"<string>\",\n          \"name\": \"<string>\",\n          \"news_count\": \"<integer>\"\n        },\n        {\n          \"ticker\": \"<string>\",\n          \"name\": \"<string>\",\n          \"news_count\": \"<integer>\"\n        }\n      ]\n    }\n  ]\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "70b0b591-32a5-45b4-b32b-b9f98f795270",
+              "name": "Missing or invalid API key.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    "directory",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "7ec42539-e82c-4d2b-974a-49eae8499852",
+              "name": "Rate limit exceeded — either the per-minute burst cap or the per-day\nvolume cap. The `Retry-After` header tells you how long to wait (a burst\nblock is short, ≤60s; a day-cap block is capped at 3600s — the true reset\nis `X-RateLimit-Reset`). The `X-RateLimit-*` trio shows the daily volume\nbudget. The body's `extra` names your tier, its `limit_per_minute` /\n`limit_per_day`, `retry_after_seconds`, and — below Pro — an `upgrade`\nblock with the higher tiers' caps and the pricing URL.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    "directory",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Too Many Requests",
+              "code": 429,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Seconds to wait before retrying (burst ≤60s; day cap ≤3600s).",
+                    "type": "text/plain"
+                  },
+                  "key": "Retry-After",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "The tier's per-day request volume.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Limit",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Requests left in today's volume budget.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Remaining",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Epoch seconds of the next 00:00 UTC reset.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Reset",
+                  "value": "<integer>"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            }
+          ],
+          "event": [],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          }
+        },
+        {
+          "id": "80384711-4915-4d95-9485-a6b91903008a",
+          "name": "One sector's most-covered tickers",
+          "request": {
+            "name": "One sector's most-covered tickers",
+            "description": {
+              "content": "The tickers in a sector (by slug, e.g. `financial-services`), ranked by\nrecent enriched-news coverage. Powers the /stocks/{slug} sub-pages.\n",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "api",
+                "symbols",
+                "sectors",
+                ":slug",
+                ""
+              ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "type": "any",
+                  "value": "ddmn2",
+                  "key": "slug",
+                  "disabled": false,
+                  "description": {
+                    "content": "(Required) ",
+                    "type": "text/plain"
+                  }
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "method": "GET",
+            "body": {},
+            "auth": null
+          },
+          "response": [
+            {
+              "id": "b8773d9d-5749-4ee1-9733-c7b44b3dcfca",
+              "name": "The sector and its most-covered tickers.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    "sectors",
+                    ":slug",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "ddmn2",
+                      "key": "slug"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"sector\": \"<string>\",\n  \"slug\": \"<string>\",\n  \"count\": \"<integer>\",\n  \"symbols\": [\n    {\n      \"ticker\": \"<string>\",\n      \"name\": \"<string>\",\n      \"news_count\": \"<integer>\"\n    },\n    {\n      \"ticker\": \"<string>\",\n      \"name\": \"<string>\",\n      \"news_count\": \"<integer>\"\n    }\n  ]\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "7b741157-4867-4ef8-91e8-4d3430c3a934",
+              "name": "Missing or invalid API key.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    "sectors",
+                    ":slug",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "ddmn2",
+                      "key": "slug"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "f0603b09-289f-46f5-b184-243ea9b3d0d0",
+              "name": "Unknown sector slug.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    "sectors",
+                    ":slug",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "ddmn2",
+                      "key": "slug"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [],
+              "cookie": [],
+              "_postman_previewlanguage": "text"
+            },
+            {
+              "id": "e6a8919d-1161-45d4-9764-5b5e8c7dee8f",
+              "name": "Rate limit exceeded — either the per-minute burst cap or the per-day\nvolume cap. The `Retry-After` header tells you how long to wait (a burst\nblock is short, ≤60s; a day-cap block is capped at 3600s — the true reset\nis `X-RateLimit-Reset`). The `X-RateLimit-*` trio shows the daily volume\nbudget. The body's `extra` names your tier, its `limit_per_minute` /\n`limit_per_day`, `retry_after_seconds`, and — below Pro — an `upgrade`\nblock with the higher tiers' caps and the pricing URL.",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "api",
+                    "symbols",
+                    "sectors",
+                    ":slug",
+                    ""
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      },
+                      "type": "any",
+                      "value": "ddmn2",
+                      "key": "slug"
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "description": {
+                      "content": "Added as a part of security scheme: bearer",
+                      "type": "text/plain"
+                    },
+                    "key": "Authorization",
+                    "value": "Bearer <token>"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Too Many Requests",
+              "code": 429,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Seconds to wait before retrying (burst ≤60s; day cap ≤3600s).",
+                    "type": "text/plain"
+                  },
+                  "key": "Retry-After",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "The tier's per-day request volume.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Limit",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Requests left in today's volume budget.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Remaining",
+                  "value": "<integer>"
+                },
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "Epoch seconds of the next 00:00 UTC reset.",
+                    "type": "text/plain"
+                  },
+                  "key": "X-RateLimit-Reset",
+                  "value": "<integer>"
+                }
+              ],
+              "body": "{\n  \"message\": \"<string>\",\n  \"error\": \"<string>\",\n  \"detail\": \"<string>\",\n  \"extra\": {}\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            }
+          ],
+          "event": [],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          }
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "type": "any",
+        "value": "{{bearerToken}}",
+        "key": "token"
+      }
+    ]
+  },
+  "event": [],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://api.alphai.io"
+    },
+    {
+      "key": "bearerToken",
+      "value": "",
+      "type": "string",
+      "description": "Your API key (ak_live_…) from https://alphai.io/account/api-keys. Sent as Authorization: Bearer <token>."
+    }
+  ],
+  "info": {
+    "_postman_id": "a7314f7c-5e16-435d-b6c9-dadd62ed2114",
+    "name": "AlphaAI — Financial News REST API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": {
+      "content": "Public REST API for alphai's relevance-scored, ticker-linked financial news.\nAll endpoints accept `Authorization: Bearer ak_live_…` (issued from your\n`/account/api-keys`). Authenticated traffic is metered per account with two\nlayers — a per-minute burst cap and a per-day volume cap (Free 20/min +\n100/day, Basic 60/min + 10,000/day, Pro 150/min + 100,000/day); a request\npasses only if both are under budget. The Free tier is for evaluation /\npersonal non-commercial use; Basic is licensed for internal commercial use;\nPro adds redistribution of the enriched feed. Send all API traffic to\n`api.alphai.io`; a key is required on every request.\n\nEvery keyed response carries `X-RateLimit-Limit`, `X-RateLimit-Remaining`\nand `X-RateLimit-Reset`; these report the per-day volume layer (Reset =\nepoch seconds of the next 00:00 UTC reset) so you can watch your daily budget\nwithout provoking a 429. A per-minute burst surfaces only as a 429 with a\nshort `Retry-After`. A 429 body also names your tier, its caps and an\n`upgrade` block. The headers reflect origin processing, so a response\nserved from a shared cache may omit them.\n\nNews-archive depth is tiered: Free keys can page the feeds back 30 days,\nBasic 90 days, Pro the full archive. Paging past your horizon returns `403`\nwith an `extra.reason` of `archive_horizon` (see the ArchiveGated response).\n\nInsider data (SEC EDGAR Form 4) flows through the same news shape:\n`category=insider` rows in the feed, a dedicated `/api/news/insider/`\nroute, and 30-day per-ticker rollups at\n`/api/symbols/{ticker}/insider-summary/`.\n\nSee https://alphai.io/developers for the score and sentiment legend, and\nhttps://alphai.io/pricing for tier limits.\n\n\nContact Support:\n Name: alphai support\n Email: support@alphai.io",
+      "type": "text/plain"
+    }
+  }
+}
