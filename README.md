@@ -6,7 +6,7 @@ Every article is enriched at ingest with per-ticker impact analysis, a category,
 
 - 🔑 **Free tier, no card** — 20 req/min · 100/day
 - 📖 **Live docs & playground** — <https://alphai.io/developers>
-- 🧭 **OpenAPI 3.1 spec** — <https://api.alphai.io/api/schema/>
+- 🧭 **OpenAPI 3.1 spec** — <https://api.alphai.io/api/schema/> · try it in-browser via [**Swagger UI**](https://api.alphai.io/api/schema/swagger-ui/)
 - 💳 **Pricing** — Free · Basic $2.99/mo · Pro $9.99/mo (<https://alphai.io/pricing>)
 
 ---
@@ -72,6 +72,8 @@ npx openapi-to-postmanv2 -s openapi.yaml -o AlphaAI.postman_collection.json -p \
 ## Links
 
 - Developers / playground — <https://alphai.io/developers>
+- Swagger UI (try endpoints in-browser) — <https://api.alphai.io/api/schema/swagger-ui/>
+- OpenAPI 3.1 spec — <https://api.alphai.io/api/schema/>
 - MCP server — <https://mcp.alphai.io>
 - Changelog — <https://alphai.io/changelog>
 - Contact — <https://alphai.io/contact>
