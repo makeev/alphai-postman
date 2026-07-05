@@ -4,6 +4,10 @@ Official [Postman](https://www.postman.com/) collection for the **[AlphaAI](http
 
 Every article is enriched at ingest with per-ticker impact analysis, a category, and a **1–10 relevance score**. Consume it here over REST, or as an [MCP server](https://mcp.alphai.io) in Claude Desktop / Cursor / any agent.
 
+[![Run In Postman](https://run.pstmn.io/button.svg)](https://god.gw.postman.com/run-collection/2739899-cd75bd32-0a53-447d-9d4f-e128a59f6a6d?action=collection%2Ffork&source=rip_markdown&collection-url=entityId%3D2739899-cd75bd32-0a53-447d-9d4f-e128a59f6a6d%26entityType%3Dcollection%26workspaceId%3Dd70a2107-3c17-4b47-926b-897627b18df5)
+
+**Live on the Postman API Network** → [AlphaAI — Financial News REST API](https://www.postman.com/mmakeevs-team/alphaai-financial-news-api/collection/47weadt/alphaai-financial-news-rest-api)
+
 - 🔑 **Free tier, no card** — 20 req/min · 100/day
 - 📖 **Live docs & playground** — <https://alphai.io/developers>
 - 🧭 **OpenAPI 3.1 spec** — <https://api.alphai.io/api/schema/> · try it in-browser via [**Swagger UI**](https://api.alphai.io/api/schema/swagger-ui/)
@@ -71,6 +75,7 @@ npx openapi-to-postmanv2 -s openapi.yaml -o AlphaAI.postman_collection.json -p \
 
 ## Links
 
+- Postman API Network — <https://www.postman.com/mmakeevs-team/alphaai-financial-news-api/collection/47weadt/alphaai-financial-news-rest-api>
 - Developers / playground — <https://alphai.io/developers>
 - Swagger UI (try endpoints in-browser) — <https://api.alphai.io/api/schema/swagger-ui/>
 - OpenAPI 3.1 spec — <https://api.alphai.io/api/schema/>
