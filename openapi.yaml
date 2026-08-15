@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: alphai REST API
-  version: "1.10.0"
+  version: "1.26.0"
   description: |
     Public REST API for alphai's relevance-scored, ticker-linked financial news.
     All endpoints accept `Authorization: Bearer ak_live_…` (issued from your
@@ -22,13 +22,41 @@ info:
     served from a shared cache may omit them.
 
     News-archive depth is tiered: Free keys can page the feeds back 30 days,
-    Basic 90 days, Pro the full archive. Paging past your horizon returns `403`
+    Basic 90 days, Pro 180 days. Paging past your horizon returns `403`
     with an `extra.reason` of `archive_horizon` (see the ArchiveGated response).
+    Coverage note: our collectors expanded in June 2026, so archive months
+    before 2026-06 hold fewer articles per day than the current feed.
 
     Insider data (SEC EDGAR Form 4) flows through the same news shape:
     `category=insider` rows in the feed, a dedicated `/api/news/insider/`
     route, and 30-day per-ticker rollups at
-    `/api/symbols/{ticker}/insider-summary/`.
+    `/api/symbols/{ticker}/insider-summary/`. For charts and analysis there
+    is `/api/symbols/{ticker}/insider-trades/`: the complete per-ticker
+    event history with 3m/12m/all-time rollups, weekly and monthly dollar
+    buckets, and every event of the trailing 12 months in one response.
+
+    Market-wide macro coverage (central-bank decisions, CPI/jobs prints,
+    commodities, geopolitics) is in the feed too, under the `macro_economy`,
+    `commodities` and `geopolitics` categories and a dedicated
+    `/api/news/macro/` route. Macro rows are market-wide events, so most
+    carry an empty `tickers` list — filter them by category, not by symbol.
+
+    The forward half of the macro loop is `/api/calendar/`: the official
+    schedule of upcoming US macro releases (FOMC decisions and minutes, CPI,
+    PPI, jobs report, GDP estimates, PCE, retail sales, jobless claims,
+    JOLTS), each with a stable occurrence `uid` that survives reschedules.
+    Ask the calendar what's coming, then read `/api/news/macro/` for what a
+    release meant once it's out.
+
+    Query parameters are validated strictly. An unknown or misspelled
+    parameter returns 400 naming the field, and the error body carries
+    `extra.allowed_params` — every parameter that endpoint accepts — so you
+    never have to guess. Common mix-ups also get a did-you-mean (`limit` and
+    `per_page` point to `page_size`; `offset`, `page`, `skip` and the
+    `after_id`/`before_id` family point to `cursor`; `ticker` points to
+    `symbol`). Parameters that belong to the MCP server rather than to this
+    API — free-text `q`/`query`/`search`, and `min_actionability` — say so
+    instead of failing silently.
 
     See https://alphai.io/developers for the score and sentiment legend, and
     https://alphai.io/pricing for tier limits.
@@ -51,6 +79,8 @@ tags:
     description: Relevance-scored, ticker-linked news.
   - name: symbols
     description: Active equity, crypto, and foreign symbols (tickers).
+  - name: calendar
+    description: Scheduled US macro releases (FOMC, CPI, jobs, GDP, PCE…).
 
 paths:
   /api/news/:
@@ -60,13 +90,56 @@ paths:
       description: |
         Feed of enriched articles, newest first. Default filter:
         `relevance_score >= 4` AND at least one active ticker. Pagination is
-        cursor-based with a page size of 10 (Pro keys may request 50 via
-        `page_size=50`): omit `cursor` for the newest page, then pass the
+        cursor-based with a default page size of 10 (any size from 1 to 20 via
+        `page_size=`; Pro keys go up to 50): omit `cursor` for the newest page,
+        then pass the
         `next_cursor` from each response to fetch the next (older) page.
         `next_cursor: null` means the end of the feed. Cursors are opaque — do
         not construct or parse them; an invalid cursor returns 400. Archive
         depth is tiered: paging back past your plan's horizon (Free 30 days,
-        Basic 90, Pro unlimited) returns 403 with an upgrade hint.
+        Basic 90, Pro 180) returns 403 with an upgrade hint.
+
+        **Delta polling** (`sort=ingested`): the same feed ordered by the
+        moment rows became available, for "what is new since my last poll".
+        Articles reach the feed later than their publish time (collection
+        median ~30 min for general news, with a long tail), so a poller that
+        filters by `time_published` misses most late arrivals; `sort=ingested`
+        never misses a row. First call without `cursor` returns the newest
+        `page_size` rows and a cursor at the feed head; each later call with
+        the previous `next_cursor` returns only rows added since. In this mode
+        `next_cursor` is always non-null — empty `results` means you are
+        caught up, keep the cursor and poll again later (responses are cached
+        for 60 s, so polling more often than once a minute buys nothing). New
+        rows only: an update to an already-delivered article is not re-sent.
+        `time_published` is not monotonic within a delta page; sort client-side
+        if you need chronological order. A cursor is only valid with the sort
+        mode that issued it.
+
+        Delta mode carries live coverage only: when we add history in bulk
+        (backfilling an earlier period), those rows do NOT enter this stream —
+        they would arrive as thousands of "new" items that are months old and
+        push your cursor far behind the live feed. They are served normally in
+        `sort=published`, by date filters and by `/api/news/{uid}/`, so a
+        one-off catch-up over the archive is a published-mode query.
+
+        **Keeping up.** One call returns at most `page_size` rows, so a poller
+        holds its position at the head only while `calls per day × page_size`
+        stays above the daily volume of the stream it asked for. Below that it
+        falls a little further behind every day, and the symptom misleads:
+        `time_published` reads hours or days old while the data is current.
+        What went stale is the cursor, not the feed. So drain instead of
+        polling once per tick: when a page comes back with `results` filled,
+        call again immediately, and sleep only once `results` is empty. That
+        clears a burst within the same cycle and lets a poller catch up by
+        itself after downtime. Two levers if the call budget is still short,
+        and they multiply: `page_size` (up to 20, or 50 on a Pro key) and a
+        narrower stream (`min_relevance`, `symbol`, `category`). For scale, at
+        the default `>= 4` floor the feed carries roughly 2,700 rows a day,
+        while `min_relevance=7` carries roughly 1,000.
+
+        A poller that never catches up eventually meets the archive gate: the
+        403 below is keyed on the age of the first row you have not read yet,
+        so it fires on a delta poller that never paged back at all.
       parameters:
         - in: query
           name: cursor
@@ -74,7 +147,16 @@ paths:
           schema: { type: string }
         - in: query
           name: symbol
-          description: Filter to articles that mention this ticker.
+          description: >-
+            Filter to articles that mention this ticker. US equities use the
+            bare symbol (`NVDA`); cryptocurrencies use the `<SYM>-USD` form
+            (`BTC-USD`), and a bare crypto name resolves to it (`DOGE` matches
+            `DOGE-USD`); foreign listings use the Yahoo suffix (`VOD.L`). A
+            delisted symbol returns its news history. A renamed company's
+            current ticker also matches articles tagged with its former
+            ticker, and any share class of an issuer matches articles tagged
+            with its other listed classes (`GOOGL` includes rows tagged
+            `GOOG`); article tags stay as published.
           schema: { type: string, example: "NVDA" }
         - in: query
           name: category
@@ -104,32 +186,71 @@ paths:
         - in: query
           name: page_size
           description: >-
-            Items per page. Only `10` (default, every tier) and `50` (Pro keys
-            only) are accepted — any other value returns 400, and requesting
-            `50` without a Pro key returns 400. Pagination is otherwise
-            unchanged: pass each response's `next_cursor` back as `cursor`
-            regardless of page size.
-          schema: { type: integer, enum: [10, 50], default: 10 }
+            Items per page, default `10`. Any value from `1` to `20` is accepted
+            on every tier; `21`-`50` requires a Pro key. A value outside `1`-`50`,
+            or an over-`20` page without a Pro key, returns 400 — the page is
+            never silently clamped. Pagination is otherwise unchanged: pass each
+            response's `next_cursor` back as `cursor` regardless of page size.
+          schema: { type: integer, minimum: 1, maximum: 50, default: 10 }
         - in: query
           name: collapse
           description: >-
-            `story` collapses syndicated reprints of one event to a single
-            representative row (the story root) and populates the `story_id`,
-            `sources_count` and `sources` fields on each item. Omit for the full
-            feed (every reprint, story fields `null`). Only `story` is accepted;
-            any other value returns 400.
+            `story` collapses coverage of one event to a single representative
+            row (the story root): syndicated reprints and independently written
+            articles about the same event, matched on headline and lead
+            similarity. Populates the `story_id`, `sources_count` and `sources`
+            fields on each item. Omit for the full feed (every article, story
+            fields `null`). Only `story` is accepted; any other value returns
+            400.
 
             Note: row-level filters (`symbol`, `category`, `min_relevance`)
             apply to the story's representative root, so a story whose root does
             not match the filter is omitted entirely.
           schema: { type: string, enum: [story] }
+        - in: query
+          name: sort
+          description: >-
+            `published` (default) is the reverse-chronological feed.
+            `ingested` is delta-polling mode: rows in the order they became
+            available, ascending, with `next_cursor` always returned (empty
+            `results` = caught up) — see the endpoint description. All other
+            filters apply unchanged in both modes. Cursors are mode-specific:
+            a cursor is only valid with the sort mode that issued it (a
+            mismatch returns 400).
+          schema: { type: string, enum: [published, ingested], default: published }
+        - in: query
+          name: from_date
+          description: >-
+            Inclusive lower bound on `time_published` — when the article was
+            published, not when it entered the feed. ISO-8601; a value without
+            a timezone is read as UTC. A bare date (`2026-06-01`) means that
+            day's midnight.
+
+            Reaching further back than your plan's archive horizon returns 403
+            (see the `403` response) — the window is subject to the same tiered
+            depth as a deep `cursor`, and on the first page just the same.
+            Cannot be combined with `sort=ingested` (400): delta mode returns
+            rows in ingest order from your cursor and never walks back into
+            history.
+          schema: { type: string, format: date-time }
+          example: "2026-06-01T00:00:00Z"
+        - in: query
+          name: to_date
+          description: >-
+            Inclusive upper bound on `time_published`, same format as
+            `from_date`. A bare date (`2026-06-01`) covers the WHOLE day
+            (through `23:59:59.999999Z`), so `from_date=2026-06-01&to_date=2026-06-01`
+            returns that day rather than an empty page. `from_date` later than
+            `to_date` returns 400.
+          schema: { type: string, format: date-time }
+          example: "2026-06-30T23:59:59Z"
       responses:
         "200":
           description: A page of enriched articles.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/NewsPagination" }
-        "400": { description: Invalid/expired cursor, unsupported `collapse` value, or a `page_size` that is not 10/50 or not permitted on this tier. }
+        "400": { description: Invalid cursor (opaque; reuse `next_cursor`), a cursor replayed into the other `sort` mode, a date window combined with `sort=ingested` or with `from_date` after `to_date`, unsupported `collapse`/`sort` value, or a `page_size` outside 1-50 or not permitted on this tier. }
         "403": { $ref: "#/components/responses/ArchiveGated" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "429": { $ref: "#/components/responses/RateLimited" }
@@ -140,8 +261,14 @@ paths:
       summary: Trending news (last 48h)
       description: >-
         Top stories from the trailing 48h: `relevance_score >= 8`, ranked by
-        score then recency. Fixed size of 10, no pagination. Syndicated reprints
-        of one story are collapsed to a single representative.
+        relevance score decayed by article age, so a fresh story outranks an
+        equally-scored stale one. At most two stories per ticker. Fixed size
+        of 10, no pagination. Coverage of one story, syndicated reprints and
+        independent write-ups of the same event alike, is collapsed to a
+        single representative, and each item carries the `story_id`,
+        `sources_count` and `sources` fields for the story it represents.
+        Most stories are carried by a single outlet, so `sources_count` is
+        usually 1; see its field description.
       responses:
         "200":
           description: List of enriched articles.
@@ -169,6 +296,14 @@ paths:
         `/api/news/`. Equivalent to `/api/news/?category=insider`, surfaced as a
         first-class route. For aggregate stats instead of the stream, see
         `/api/symbols/{ticker}/insider-summary/`.
+
+        To watch for new filings, poll with `sort=ingested` rather than
+        re-reading the newest page: a Form 4 is filed up to several days after
+        the trade it reports, so a new event often enters the feed already
+        below the head of the publish-ordered page. Delta mode orders by the
+        moment the row became available, so it never misses one. The contract
+        is identical to `/api/news/?sort=ingested` — see that endpoint for the
+        full description.
       parameters:
         - in: query
           name: cursor
@@ -176,23 +311,215 @@ paths:
           schema: { type: string }
         - in: query
           name: symbol
-          description: Filter to insider news that mentions this ticker.
+          description: >-
+            Filter to insider news that mentions this ticker. Delisted
+            symbols return their history; a renamed company's current ticker
+            also matches rows tagged with its former ticker.
           schema: { type: string, example: "NVDA" }
+        - in: query
+          name: min_relevance
+          description: >-
+            Override the default ≥4 threshold. Insider rows score
+            deterministically from the event's summed dollar value (plus
+            buy/10b5-1 modifiers), so this acts as an "only large trades"
+            dial — e.g. `min_relevance=7` keeps roughly $10M+ events.
+          schema: { type: integer, minimum: 1, maximum: 10, default: 4 }
+        - in: query
+          name: is_10b5_1
+          description: >-
+            Filter on the same field each item's `insider` block reports: the
+            event's Rule 10b5-1 status. Omit for every event; `false` returns
+            discretionary trades only — the "hide pre-scheduled sales" dial,
+            since a 10b5-1 ladder was set up months earlier and carries no
+            timing decision; `true` returns plan events only. Event-level, like
+            the field itself: a filing whose group mixes plan and discretionary
+            tranches counts as a plan event on both. The two values partition
+            the feed, so `true` and `false` pages always add up to the
+            unfiltered one.
+          schema: { type: boolean }
         - in: query
           name: page_size
           description: >-
-            Items per page. Only `10` (default, every tier) and `50` (Pro keys
-            only) are accepted — any other value returns 400, and requesting
-            `50` without a Pro key returns 400.
-          schema: { type: integer, enum: [10, 50], default: 10 }
+            Items per page, default `10`. Any value from `1` to `20` is accepted
+            on every tier; `21`-`50` requires a Pro key. A value outside `1`-`50`,
+            or an over-`20` page without a Pro key, returns 400.
+          schema: { type: integer, minimum: 1, maximum: 50, default: 10 }
+        - in: query
+          name: sort
+          description: >-
+            `published` (default) is the reverse-chronological feed.
+            `ingested` is delta-polling mode, with the same contract as on
+            `/api/news/`: rows in the order they became available, ascending,
+            `next_cursor` always returned (empty `results` = caught up), and
+            all other filters applied unchanged. Prefer it for watching insider
+            activity — a Form 4 is filed days after the trade it reports, so a
+            new event routinely lands below the newest page of the
+            publish-ordered feed and a poller reading only the head misses it.
+            Cursors are mode-specific: a cursor is only valid with the sort mode
+            that issued it (a mismatch returns 400).
+          schema: { type: string, enum: [published, ingested], default: published }
+        - in: query
+          name: from_date
+          description: >-
+            Inclusive lower bound on `time_published`, identical in format and
+            behaviour to the parameter on `/api/news/` (ISO-8601, naive read as
+            UTC, tier-gated with 403, refused with `sort=ingested`).
+
+            Note which clock it is: `time_published` is when the filing reached
+            the feed, NOT the insider's `transaction_date` reported in the
+            `insider` block. A Form 4 is filed days after the trade, so a window
+            over trade dates is a different question and this parameter does not
+            answer it.
+          schema: { type: string, format: date-time }
+          example: "2026-06-01T00:00:00Z"
+        - in: query
+          name: to_date
+          description: >-
+            Inclusive upper bound on `time_published`. A bare date covers the
+            whole day; same clock caveat as `from_date`.
+          schema: { type: string, format: date-time }
+          example: "2026-06-30T23:59:59Z"
       responses:
         "200":
-          description: A page of enriched insider-transaction articles.
+          description: >-
+            A page of enriched insider-transaction articles. Each item
+            additionally carries the structured `insider` event block
+            (side / shares / average price / total value / reporting owner) —
+            populated on this endpoint only.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/NewsPagination" }
-        "400": { description: Invalid/expired cursor, or a `page_size` that is not 10/50 or not permitted on this tier. }
+        "400": { description: Invalid cursor (opaque; reuse `next_cursor`), a cursor replayed into the other `sort` mode, a date window combined with `sort=ingested` or with `from_date` after `to_date`, an unsupported `sort` value, or a `page_size` outside 1-50 or not permitted on this tier. }
         "403": { $ref: "#/components/responses/ArchiveGated" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/news/macro/:
+    get:
+      tags: [news]
+      summary: Market-wide macro news (central banks, prints, commodities, geopolitics)
+      description: |
+        Dedicated macro feed: the `macro_economy`, `commodities` and
+        `geopolitics` categories in one stream — central-bank decisions and
+        statements (FOMC), inflation/jobs prints, oil and gold, geopolitical
+        risk. Same enriched shape, `relevance_score >= 4` floor and
+        cursor-based pagination as `/api/news/`; equivalent to
+        `/api/news/?category=macro_economy,commodities,geopolitics`, surfaced
+        as a first-class route.
+
+        Macro rows are market-wide, so most carry an empty `tickers` list —
+        that is by design (an FOMC statement is not news about one company),
+        and the per-article analysis block is still populated. A macro row
+        that IS about listed companies (an oil-price story tagged to majors)
+        keeps its tickers.
+
+        To watch for new releases, poll with `sort=ingested` — same delta
+        contract as `/api/news/?sort=ingested`.
+      parameters:
+        - in: query
+          name: cursor
+          description: Opaque cursor from a prior response's `next_cursor`. Omit for the newest page.
+          schema: { type: string }
+        - in: query
+          name: category
+          description: >-
+            Narrow to a subset of the macro categories, comma-separated.
+            Values outside `macro_economy`/`commodities`/`geopolitics` return
+            400 (the full category filter lives on `/api/news/`).
+          schema: { type: string, example: "macro_economy" }
+        - in: query
+          name: min_relevance
+          description: >-
+            Override the default ≥4 threshold. On release days the release
+            itself scores 7-9, so `min_relevance=7` keeps roughly
+            "the events" and drops the commentary.
+          schema: { type: integer, minimum: 1, maximum: 10, default: 4 }
+        - in: query
+          name: page_size
+          description: >-
+            Items per page, default `10`. Any value from `1` to `20` is accepted
+            on every tier; `21`-`50` requires a Pro key. A value outside `1`-`50`,
+            or an over-`20` page without a Pro key, returns 400.
+          schema: { type: integer, minimum: 1, maximum: 50, default: 10 }
+        - in: query
+          name: sort
+          description: >-
+            `published` (default) is the reverse-chronological feed.
+            `ingested` is delta-polling mode, with the same contract as on
+            `/api/news/`. Cursors are mode-specific: a cursor is only valid
+            with the sort mode that issued it (a mismatch returns 400).
+          schema: { type: string, enum: [published, ingested], default: published }
+      responses:
+        "200":
+          description: A page of enriched macro articles.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NewsPagination" }
+        "400": { description: Invalid cursor (opaque; reuse `next_cursor`), a cursor replayed into the other `sort` mode, a category outside the macro set, or a `page_size` outside 1-50 or not permitted on this tier. }
+        "403": { $ref: "#/components/responses/ArchiveGated" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/calendar/:
+    get:
+      tags: [calendar]
+      summary: Scheduled US macro releases (economic calendar)
+      description: |
+        The official forward schedule of US macro releases: FOMC decisions
+        (with SEP and press-conference markers) and minutes, CPI, PPI, the
+        jobs report (nonfarm payrolls), GDP estimates (advance/second/third),
+        PCE, advance retail sales, weekly jobless claims and JOLTS — sourced
+        from the agencies' own schedule pages (Fed, BLS, BEA, Census, DOL).
+
+        Each occurrence carries a stable `uid` (`US-CPI-2026-07`) that
+        survives reschedules: a moved release keeps its identity, updates
+        `scheduled_at` and reports `schedule_status`. `phase` says only
+        whether the scheduled moment has passed (`upcoming`/`elapsed`) — it
+        deliberately does not claim the agency actually published. Pair the
+        calendar with `/api/news/macro/` to read what a release meant once
+        it's out.
+
+        The window is `[from_date, to_date)` — from inclusive, to exclusive;
+        date-only values mean UTC midnight; defaults are today (UTC) → +7
+        days; the span is capped at 400 days. No pagination: a full year of
+        every series is ~250 rows (hard cap 500), ordered by `scheduled_at`
+        ascending. Cancelled and postponed occurrences stay in the response
+        with their `schedule_status`.
+      parameters:
+        - in: query
+          name: from_date
+          description: >-
+            Window start, inclusive. `YYYY-MM-DD` (UTC midnight) or an ISO
+            datetime (naive = UTC). Default: today, UTC midnight.
+          schema: { type: string, example: "2026-08-07" }
+        - in: query
+          name: to_date
+          description: >-
+            Window end, exclusive. Same formats. Default `from_date` + 7 days;
+            span capped at 400 days.
+          schema: { type: string, example: "2026-08-14" }
+        - in: query
+          name: event_key
+          description: Narrow to specific series, comma-separated. Unknown keys return 400.
+          schema: { type: string, example: "cpi,nfp,fomc_decision" }
+        - in: query
+          name: importance
+          description: Narrow by importance tier.
+          schema: { type: string, enum: [high, medium, low] }
+        - in: query
+          name: country
+          description: v1 covers US releases only.
+          schema: { type: string, enum: [US], default: US }
+      responses:
+        "200":
+          description: Occurrences within the window, `scheduled_at` ascending.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CalendarEvents" }
+        "400":
+          description: >-
+            Unknown parameter or value, a malformed date, `to_date` not after
+            `from_date`, or a window over 400 days.
         "401": { $ref: "#/components/responses/Unauthorized" }
         "429": { $ref: "#/components/responses/RateLimited" }
 
@@ -255,7 +582,9 @@ paths:
         All active symbols (US equities, crypto, and foreign listings),
         alphabetical by ticker. ~10k entries — cache aggressively, or slice with
         the optional `limit`/`offset` params (the response stays a bare array
-        either way).
+        either way). Pass `search` to resolve a name, brand or ticker prefix to
+        its canonical symbol (`search=bitcoin` returns `BTC-USD`,
+        `search=spacex` returns `SPCX`).
       parameters:
         - in: query
           name: limit
@@ -265,6 +594,17 @@ paths:
           name: offset
           description: Skip this many symbols from the start of the list.
           schema: { type: integer, minimum: 0, default: 0 }
+        - in: query
+          name: search
+          description: >-
+            Resolve a query to matching symbols: ticker-prefix, company-name
+            substring, or the company's brand name where that differs from its
+            registered name (`search=spacex` returns `SPCX`, registered as
+            SPACE EXPLORATION TECHNOLOGIES CORP). Case-insensitive; exact
+            ticker, exact name and brand matches rank above prefix and
+            substring matches. Useful for finding the canonical form of a name
+            (`search=bitcoin` returns `BTC-USD`).
+          schema: { type: string, example: "bitcoin" }
       responses:
         "200":
           description: List of active symbols.
@@ -285,10 +625,17 @@ paths:
         - in: path
           name: ticker
           required: true
-          schema: { type: string, pattern: "^[A-Z0-9][A-Z0-9.\\-]{0,19}$" }
+          description: >-
+            Ticker symbol. US equities are bare (`AAPL`); cryptocurrencies use
+            the `<SYM>-USD` form (`BTC-USD`); foreign listings use the Yahoo
+            suffix (`VOD.L`).
+          schema: { type: string, pattern: "^[A-Z0-9][A-Z0-9.\\-]{0,19}$", example: "BTC-USD" }
       responses:
         "200":
-          description: Symbol with extended metadata.
+          description: >-
+            Symbol with extended metadata. Resolves delisted symbols too:
+            check `status`, and `renamed_to` for the successor ticker when
+            the company continues under a new symbol.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Symbol" }
@@ -309,16 +656,22 @@ paths:
         - in: path
           name: ticker
           required: true
+          description: >-
+            Accepts the same ticker forms as the symbol detail endpoint: bare
+            crypto names resolve to their `<SYM>-USD` listing (`DOGE` →
+            `DOGE-USD`; the response echoes the resolved ticker), and delisted
+            or renamed symbols stay addressable.
           schema: { type: string, pattern: "^[A-Z0-9][A-Z0-9.\\-]{0,19}$" }
       responses:
         "200":
           description: >-
-            Sentiment counts for the window. A well-formed but unknown ticker
-            returns zeros rather than 404.
+            Sentiment counts for the window. Zeros mean a quiet week for a
+            real listing; a ticker no symbol owns returns 404 instead.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/TickerSentimentSummary" }
         "400": { description: Malformed ticker. }
+        "404": { $ref: "#/components/responses/NotFound" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "429": { $ref: "#/components/responses/RateLimited" }
 
@@ -335,16 +688,93 @@ paths:
         - in: path
           name: ticker
           required: true
+          description: >-
+            Accepts the same ticker forms as the symbol detail endpoint: bare
+            crypto names resolve to their `<SYM>-USD` listing, and delisted or
+            renamed symbols stay addressable. Crypto and foreign listings have
+            no Form 4 flow, so they return zeros.
           schema: { type: string, pattern: "^[A-Z0-9][A-Z0-9.\\-]{0,19}$" }
       responses:
         "200":
           description: >-
-            Insider activity stats for the window. A well-formed but unknown
-            ticker returns zeros rather than 404.
+            Insider activity stats for the window. Zeros mean no filings in
+            the window for a real listing; a ticker no symbol owns returns
+            404 instead.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/TickerInsiderSummary" }
         "400": { description: Malformed ticker. }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/symbols/{ticker}/insider-trades/:
+    get:
+      tags: [symbols]
+      summary: Form 4 event history and chart aggregates for one ticker
+      description: |
+        The complete per-ticker insider-trading payload behind
+        alphai.io/stock/{ticker}/insider-trades: the paginated Form 4 event
+        history plus everything a chart needs, in one request. One event is
+        a filing's whole tranche group (shares summed, the price
+        value-weighted, a 10b5-1 ladder is ONE event), same folding as the
+        feed's `insider` block.
+
+        The first page (no `cursor`) also carries the aggregates: `summary`
+        (3-month, 12-month and all-time windows plus the most active
+        insiders of the last 12 months), `series` (monthly buckets) and
+        `series_weekly` (Monday-keyed weekly buckets), both zero-filled up
+        to the current period and capped to the trailing 12 months, and
+        `chart_events` — every event of the trailing 12 months regardless of
+        pagination. The aggregates always cover both sides regardless of the
+        `side` filter, and they are `null` on cursor pages, which carry only
+        the next `events` chunk.
+
+        Side semantics on this surface follow the value flow: code P is
+        `buy`; codes S and D are both `sell`, because a code D sale back to
+        the issuer moves dollars off the insider's position like any sale.
+        This deliberately differs from the feed's `insider.side`, which
+        labels D as `other`; use `transaction_code` to tell a market sale
+        (S) from a sale to the issuer (D).
+      parameters:
+        - in: path
+          name: ticker
+          required: true
+          description: >-
+            Accepts the same ticker forms as the symbol detail endpoint: bare
+            crypto names resolve to their `<SYM>-USD` listing, and delisted or
+            renamed symbols stay addressable. Crypto and foreign listings have
+            no Form 4 flow, so they return empty history.
+          schema: { type: string, pattern: "^[A-Z0-9][A-Z0-9.\\-]{0,19}$" }
+        - in: query
+          name: side
+          description: >-
+            Filters the paginated `events` list only; the first page's
+            aggregates always cover both sides.
+          schema: { type: string, enum: [buy, sell, all], default: all }
+        - in: query
+          name: cursor
+          description: >-
+            Opaque keyset cursor from a prior response's `next_cursor`. Omit
+            it for the newest page, the only one carrying the aggregates.
+          schema: { type: string }
+        - in: query
+          name: page_size
+          description: >-
+            Events per page. Not tier-gated: every tier may request up to
+            200, so one request can load a chart's whole working set.
+          schema: { type: integer, minimum: 1, maximum: 200, default: 20 }
+      responses:
+        "200":
+          description: >-
+            One page of the event history. Empty arrays mean no recorded
+            filings for a real listing; a ticker no symbol owns returns 404
+            instead.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TickerInsiderTrades" }
+        "400": { description: Malformed ticker, cursor or query parameter. }
+        "404": { $ref: "#/components/responses/NotFound" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "429": { $ref: "#/components/responses/RateLimited" }
 
@@ -461,12 +891,19 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     ArchiveGated:
       description: |
-        The requested `cursor` points past your plan's news-archive horizon
-        (Free 30 days, Basic 90; Pro is unlimited and never sees this). The
-        body's `extra` carries `reason: archive_horizon`, your `tier`, the
-        plan's `archive_days`, and an `upgrade` block with the higher tiers'
-        caps and the pricing URL. First pages and cursors within the horizon
-        are unaffected.
+        The request reaches past your plan's news-archive horizon (Free 30
+        days, Basic 90, Pro 180) — either the `cursor` points beyond it, or
+        `from_date` does. The body's `extra` carries `reason: archive_horizon`,
+        your `tier`, the plan's `archive_days`, and (below Pro) an `upgrade`
+        block with the higher tiers' caps and the pricing URL.
+
+        The window is checked on the FIRST page, unlike the cursor: a
+        `from_date` older than the horizon is refused immediately rather than
+        after paging down to it. A window with only `to_date` is refused when
+        that bound itself is past the horizon (the window is open-ended into
+        the past). Windows and cursors inside the horizon are unaffected, and
+        the request is refused rather than trimmed to the horizon, so a given
+        URL always returns the same body.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
@@ -477,9 +914,12 @@ components:
       description: >-
         `market_movers` is for articles whose subject IS a notable price move
         ("AMD up 5% today"); `sector_analysis` is genuine sector-level
-        analysis; `insider` covers SEC Form 4 insider transactions only;
-        `corporate_actions` covers issuer SEC 8-K events (earnings, material
-        agreements, debt, executive changes, annual-meeting results).
+        analysis; `insider` covers SEC Form 4 insider transactions only.
+        SEC 8-K filings categorize by their primary item: an earnings release
+        (Item 2.02) is `earnings`, a completed acquisition or disposition
+        (Item 2.01) is `mergers_acquisitions`, and the remaining events
+        (material agreements, debt, executive changes, annual-meeting
+        results) are `corporate_actions`.
       enum:
         - earnings
         - mergers_acquisitions
@@ -499,6 +939,82 @@ components:
     Sentiment:
       type: string
       enum: [positive, neutral, negative]
+
+    CalendarEvent:
+      type: object
+      description: >-
+        One scheduled occurrence of a US macro release. `uid` is a stable,
+        opaque occurrence id — reschedules update the row in place, so the
+        uid is safe to store and link. `phase` is computed against request
+        time and only says whether the scheduled moment passed; check
+        `schedule_status` first (a `cancelled` row's phase is meaningless).
+      properties:
+        uid: { type: string, example: "US-CPI-2026-07" }
+        event_key:
+          type: string
+          enum:
+            - fomc_decision
+            - fomc_minutes
+            - cpi
+            - ppi
+            - nfp
+            - gdp
+            - pce
+            - retail_sales
+            - jobless_claims
+            - jolts
+        title: { type: string, example: "CPI (Consumer Price Index)" }
+        reference_period:
+          type: string
+          description: >-
+            What the release covers, machine-readable: a month (`2026-07`), a
+            quarter (`2026-Q2`), or — for weekly claims — the reference
+            week-ending Saturday (`2026-07-25`).
+          example: "2026-07"
+        release_stage:
+          type: string
+          nullable: true
+          description: GDP only — `advance`, `second` or `third`; null elsewhere.
+        scheduled_at:
+          type: string
+          format: date-time
+          description: Official release moment (UTC; 08:30 / 10:00 / 14:00 ET converted).
+        phase: { type: string, enum: [upcoming, elapsed] }
+        schedule_status: { type: string, enum: [scheduled, postponed, cancelled] }
+        schedule_basis:
+          type: string
+          enum: [official, inferred]
+          description: >-
+            `official`: the date is printed on the agency's own schedule page.
+            `inferred`: derived from the documented publication cadence —
+            weekly jobless claims (DOL publishes no forward schedule) and FOMC
+            minutes dates the Fed has not printed yet (three weeks after the
+            meeting). Inferred dates flip to official once the agency lists
+            them.
+        importance: { type: string, enum: [high, medium, low] }
+        category: { $ref: "#/components/schemas/NewsCategory" }
+        country: { type: string, example: "US" }
+        source_url:
+          type: string
+          format: uri
+          description: The agency's own schedule page for the series.
+        press_conference_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: FOMC decisions only — the 14:30 ET press conference; null elsewhere.
+        has_sep:
+          type: boolean
+          description: >-
+            FOMC decisions only — true when the meeting carries a Summary of
+            Economic Projections (the "dot plot").
+
+    CalendarEvents:
+      type: object
+      properties:
+        events:
+          type: array
+          items: { $ref: "#/components/schemas/CalendarEvent" }
 
     Confidence:
       type: string
@@ -525,7 +1041,13 @@ components:
         title: { type: string }
         url: { type: string, format: uri }
         time_published: { type: string, format: date-time }
-        authors: { type: array, items: { type: string } }
+        authors:
+          type: array
+          items: { type: string }
+          description: >-
+            Article authors. On SEC Form 4 rows: every reporting owner of the
+            filing, primary first — a joint filing by a holding vehicle and
+            the person behind it lists both.
         summary: { type: string, description: AI-generated summary safe to redistribute. }
         banner_image: { type: string, format: uri, nullable: true }
         source: { type: string }
@@ -546,8 +1068,20 @@ components:
             `direct` and an `indirect` leg of the same plan as two separate
             articles (same filing URL, same date); they are distinct economic
             events, so SUM them rather than dedupe by URL/accession.
-        created_at: { type: string, format: date-time }
-        updated_at: { type: string, format: date-time }
+        created_at:
+          type: string
+          format: date-time
+          description: >-
+            When AlphaAI received the article — NOT its publish time (that is
+            `time_published`). Use it to judge how fresh a pickup is. Do not
+            build "what's new" polling on this field; that is what
+            `sort=ingested` on `/api/news/` and `/api/news/insider/` is for.
+        updated_at:
+          type: string
+          format: date-time
+          description: >-
+            Last time the stored article row was touched (including internal
+            maintenance). Informational only.
 
     ImpactAnalysis:
       type: object
@@ -661,27 +1195,118 @@ components:
           type: string
           nullable: true
           description: >-
-            Story-collapse only (`?collapse=story`). The `uid` of this story's
-            representative article — equal to this item's own `original.uid`, and
-            resolvable via `/api/news/{uid}/`. `null` in the default feed.
+            Populated whenever the response is story-collapsed — `?collapse=story`
+            on `/api/news/`, and always on `/api/news/trending/`. The `uid` of
+            this story's representative article — equal to this item's own
+            `original.uid`, and resolvable via `/api/news/{uid}/`. `null` in the
+            default (uncollapsed) feed.
           example: "788e477c66f3849b"
         sources_count:
           type: integer
           nullable: true
           description: >-
-            Story-collapse only. Number of distinct outlets (source domains)
-            covering this story — a corroboration signal, so the same outlet
-            running it more than once counts once. May exceed the length of
-            `sources`, which is capped at 10. `null` in the default feed.
-          example: 7
+            Story-collapsed responses only. Number of distinct outlets (source
+            domains) covering this story; the same outlet running it more than
+            once counts once. Most stories are carried by a single outlet, so
+            this is usually 1. Treat a value above 1 as the signal, not the
+            number itself. May exceed the length of `sources`, which is capped
+            at 10. `null` in the default feed.
+          example: 3
         sources:
           type: array
           nullable: true
           items: { type: string }
           description: >-
-            Story-collapse only. Distinct source domains covering this story, in
-            first-appearance order, capped at 10. `null` in the default feed.
+            Story-collapsed responses only. Distinct source domains covering this
+            story, in first-appearance order, capped at 10. `null` in the default
+            feed.
           example: ["reuters.com", "apnews.com", "bloomberg.com"]
+        insider:
+          nullable: true
+          allOf: [{ $ref: "#/components/schemas/InsiderEvent" }]
+          description: >-
+            `/api/news/insider/` only — the structured SEC Form 4 event block.
+            `null` on every other endpoint and on rows without paired
+            transaction data.
+
+    InsiderEvent:
+      type: object
+      description: >-
+        Structured SEC Form 4 event: the aggregate of the news row's whole
+        transaction group (one row fronts a filing's non-derivative trades of
+        one type and holding form, so a 10b5-1 ladder is ONE event). `shares`
+        and `total_value_usd` are group sums; `avg_price_usd` is the
+        value-weighted average over priced tranches. Money and share fields are
+        decimal STRINGS to preserve precision.
+      required:
+        [side, transaction_code, shares, is_10b5_1, insider_name,
+         insider_title, is_officer, is_director, is_ten_percent_owner,
+         transaction_date, filed_at, late_filing]
+      properties:
+        side:
+          type: string
+          enum: [buy, sell, other]
+          description: >-
+            Signal label from the transaction code: `buy` (P, open-market
+            purchase), `sell` (S, open-market sale), `other` for everything
+            else — including D (sale to the issuer: a buyback/redemption, not
+            an open-market disposition). Use `transaction_code` for your own
+            mapping.
+        transaction_code:
+          type: string
+          description: Raw SEC Form 4 transaction code (`P`, `S`, `D`, …).
+          example: "S"
+        shares:
+          type: string
+          description: Total shares across the event's tranches (decimal string).
+          example: "25000"
+        avg_price_usd:
+          type: string
+          nullable: true
+          description: >-
+            Value-weighted average price per share over priced tranches.
+            `null` when the filing prices no tranche.
+          example: "187.32"
+        total_value_usd:
+          type: string
+          nullable: true
+          description: >-
+            Total USD value across priced tranches (a lower bound when some
+            tranches are unpriced). `null` when no tranche is priced.
+          example: "4683000"
+        is_10b5_1:
+          type: boolean
+          description: >-
+            True when any tranche executed under a pre-arranged 10b5-1 plan.
+            Filterable on this endpoint: `?is_10b5_1=false` keeps only
+            discretionary events.
+        insider_name: { type: string, example: "STEVENS MARK A" }
+        insider_title: { type: string, example: "Director" }
+        is_officer: { type: boolean }
+        is_director: { type: boolean }
+        is_ten_percent_owner: { type: boolean }
+        transaction_date:
+          type: string
+          format: date
+          description: Date of the group's last fill (a ladder can span days).
+          example: "2026-07-09"
+        filed_at:
+          type: string
+          format: date-time
+          description: >-
+            When EDGAR accepted the filing (UTC). Compare against
+            `transaction_date` for your own lateness rule.
+          example: "2026-07-11T20:31:04Z"
+        late_filing:
+          type: boolean
+          description: >-
+            The filing missed the SEC's two-business-day deadline (Rule
+            16a-3(g)). Computed on Eastern dates, since EDGAR accepts filings
+            until ~22:00 ET, and with one weekday of slack so a trade in a
+            holiday week is not flagged: true when more than three weekday-days
+            separate `transaction_date` from the filing. About 3% of events
+            carry it; the long tail is catch-up filings covering trades from
+            years earlier.
 
     NewsPagination:
       type: object
@@ -694,8 +1319,12 @@ components:
           type: string
           nullable: true
           description: >-
-            Opaque cursor for the next (older) page. Pass it back as `?cursor=`.
-            `null` when the end of the feed has been reached.
+            Opaque cursor for the next page. Pass it back as `?cursor=` with
+            the same `sort` mode. Default (`sort=published`) feed: the next
+            older page, `null` when the end of the feed has been reached.
+            Delta mode (`sort=ingested`): always non-null — it is your polling
+            position; empty `results` means caught up, keep the cursor and
+            poll again later.
 
     Symbol:
       type: object
@@ -716,14 +1345,48 @@ components:
         industry: { type: string }
         description: { type: string }
         website: { type: string, format: uri, nullable: true }
+        brand_aliases:
+          type: array
+          items: { type: string }
+          description: >-
+            Lowercase names the issuer is known by, when they differ from
+            `name` (`["spacex"]` on SPCX, registered as SPACE EXPLORATION
+            TECHNOLOGIES CORP). Use them to match a name a user typed against a
+            ticker. Usually empty: most issuers are already reachable by their
+            registered name. List responses only.
+          example: ["spacex"]
         country:
           type: string
-          description: ISO alpha-2 country code (foreign listings; empty for US/crypto).
-          example: GB
+          description: >-
+            ISO alpha-2 country of domicile. `US` for SEC-listed symbols, the
+            listing venue's country for foreign listings. Empty for crypto — a
+            coin has no domicile.
+          example: US
         currency:
           type: string
-          description: Trading currency (foreign/crypto; empty for US).
-          example: GBP
+          description: >-
+            Trading currency. `USD` for SEC-listed symbols and crypto pairs, the
+            local currency for foreign listings.
+          example: USD
+        status:
+          type: string
+          example: active
+          description: >-
+            Listing status, `active` or `delisted`. Delisted symbols stay
+            resolvable on this endpoint so their news history remains
+            reachable.
+        delisted_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: >-
+            When the symbol was marked delisted. Null for active symbols and
+            for symbols delisted before July 2026.
+        renamed_to:
+          type: string
+          description: >-
+            Set on a delisted symbol when the company continues under a new
+            ticker (for example SATS became ECHO). Empty otherwise.
 
     SymbolPeer:
       type: object
@@ -860,6 +1523,241 @@ components:
           example: "-221102600.00"
           description: Buys minus sells in USD over the window, as a decimal string.
 
+    TickerInsiderTrades:
+      type: object
+      required: [ticker, events, next_cursor]
+      properties:
+        ticker: { type: string }
+        coverage_start:
+          type: string
+          format: date
+          nullable: true
+          description: >-
+            Earliest recorded transaction date for this ticker; charts should
+            not claim history from before it. `null` when nothing is recorded.
+        summary:
+          nullable: true
+          allOf: [{ $ref: "#/components/schemas/InsiderTradesSummary" }]
+          description: First page only; `null` on cursor pages.
+        series:
+          type: array
+          nullable: true
+          items: { $ref: "#/components/schemas/InsiderTradesMonthBucket" }
+          description: >-
+            Calendar-month buckets, zero-filled up to the current month and
+            capped to the trailing 12 months. First page only; `null` on
+            cursor pages.
+        series_weekly:
+          type: array
+          nullable: true
+          items: { $ref: "#/components/schemas/InsiderTradesWeekBucket" }
+          description: >-
+            ISO-week buckets keyed by their Monday, zero-filled up to the
+            current week over the same 12-month horizon. First page only;
+            `null` on cursor pages.
+        chart_events:
+          type: array
+          nullable: true
+          items: { $ref: "#/components/schemas/InsiderTradeEvent" }
+          description: >-
+            Every event of the trailing 12 months, both sides, independent of
+            the paginated list below — a chart never shows a bar without its
+            marks. First page only; `null` on cursor pages.
+        events:
+          type: array
+          items: { $ref: "#/components/schemas/InsiderTradeEvent" }
+          description: One page of the event history, newest first; honors `side`.
+        next_cursor:
+          type: string
+          nullable: true
+          description: >-
+            Opaque cursor for the next (older) page; `null` at the end of the
+            recorded history.
+
+    InsiderTradesSummary:
+      type: object
+      required: [last_3m, last_12m, all_time, top_insiders]
+      properties:
+        last_3m: { $ref: "#/components/schemas/InsiderTradesWindow" }
+        last_12m: { $ref: "#/components/schemas/InsiderTradesWindow" }
+        all_time: { $ref: "#/components/schemas/InsiderTradesWindow" }
+        top_insiders:
+          type: array
+          items: { $ref: "#/components/schemas/InsiderTradesTopInsider" }
+          description: Most active reporters of the last 12 months, at most five.
+
+    InsiderTradesWindow:
+      type: object
+      description: >-
+        Event-level aggregates over one rolling window. Counts here are
+        grouped EVENTS, not tranches, so they run lower than the
+        transaction counts of `/api/symbols/{ticker}/insider-summary/`.
+      required: [buy_count, sell_count, unique_insiders, pct_10b5_1]
+      properties:
+        buy_count: { type: integer }
+        sell_count: { type: integer }
+        buy_value_usd:
+          type: string
+          nullable: true
+          example: "1240000.00"
+          description: Decimal string in USD; null when the window has no priced buys.
+        sell_value_usd:
+          type: string
+          nullable: true
+          example: "224580213.05"
+          description: Decimal string in USD; null when the window has no priced sells.
+        unique_insiders:
+          type: integer
+          description: Distinct reporting owners in the window.
+        pct_10b5_1:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Share of the window's events executed under a pre-arranged 10b5-1 plan, in percent.
+
+    InsiderTradesTopInsider:
+      type: object
+      required: [name, title, event_count]
+      properties:
+        name: { type: string, example: "Intrator Michael N" }
+        title:
+          type: string
+          description: Officer title from the filing; empty when the filer reports as a director only.
+        event_count: { type: integer }
+        net_value_usd:
+          type: string
+          nullable: true
+          example: "-505000000.00"
+          description: Buys minus sells in USD over the last 12 months, as a decimal string; positive means a net buyer.
+
+    InsiderTradesMonthBucket:
+      type: object
+      required: [month, buy_count, sell_count, buy_value_usd, sell_value_usd]
+      properties:
+        month:
+          type: string
+          example: "2026-08"
+          description: Calendar month, `YYYY-MM`.
+        buy_count: { type: integer }
+        sell_count: { type: integer }
+        buy_value_usd:
+          type: string
+          example: "0"
+          description: Decimal string in USD; `"0"` for a quiet side.
+        sell_value_usd: { type: string, example: "48200000.00" }
+
+    InsiderTradesWeekBucket:
+      type: object
+      required: [week_start, buy_count, sell_count, buy_value_usd, sell_value_usd]
+      properties:
+        week_start: { type: string, format: date, description: Monday of the ISO week. }
+        buy_count: { type: integer }
+        sell_count: { type: integer }
+        buy_value_usd: { type: string, example: "0" }
+        sell_value_usd: { type: string, example: "9886021.65" }
+
+    InsiderTradeEvent:
+      type: object
+      description: >-
+        One Form 4 economic event, same folding as the feed's `InsiderEvent`
+        (a filing's whole tranche group: `shares` and `total_value_usd` are
+        group sums, `avg_price_usd` is value-weighted over priced tranches,
+        money and share fields are decimal STRINGS). Differences from the
+        feed block: `side` here is only `buy` or `sell` (D counts as sell,
+        see the endpoint description), and each event adds its stake impact,
+        tranche count and the link to our enriched article.
+      required:
+        [side, transaction_code, ownership_form, shares, tranche_count,
+         is_10b5_1, late_filing, insider_name, insider_title, is_officer,
+         is_director, is_ten_percent_owner, transaction_date, filed_at,
+         news_uid, news_title, news_published, has_article]
+      properties:
+        side:
+          type: string
+          enum: [buy, sell]
+          description: Value-flow label; `transaction_code` carries the raw code.
+        transaction_code:
+          type: string
+          description: Raw SEC Form 4 transaction code (`P`, `S`, `D`).
+          example: "S"
+        ownership_form:
+          type: string
+          enum: [D, I]
+          description: Direct or indirect holding pool.
+        security_title:
+          type: string
+          description: Security class from the filing; empty when unreported.
+          example: "Common Stock"
+        shares:
+          type: string
+          description: Total shares across the event's tranches (decimal string).
+          example: "107692"
+        avg_price_usd:
+          type: string
+          nullable: true
+          description: >-
+            Value-weighted average price per share over priced tranches.
+            `null` when the filing prices no tranche.
+          example: "91.80"
+        total_value_usd:
+          type: string
+          nullable: true
+          description: >-
+            Total USD value across priced tranches (a lower bound when some
+            tranches are unpriced). `null` when no tranche is priced.
+          example: "9886021.65"
+        tranche_count:
+          type: integer
+          description: Fills folded into this event (a 10b5-1 ladder files many).
+          example: 8
+        stake_change_pct:
+          type: string
+          nullable: true
+          description: >-
+            Percent of the pre-event position this event moved, as a decimal
+            string; sells are negative ("-26.0" = sold 26% of the stake).
+            `null` when the pre-event position cannot be reconstructed.
+          example: "-100.0"
+        is_10b5_1:
+          type: boolean
+          description: True when any tranche executed under a pre-arranged 10b5-1 plan.
+        late_filing:
+          type: boolean
+          description: >-
+            The filing missed the SEC's two-business-day deadline, computed
+            the same way as the feed's `InsiderEvent.late_filing`.
+        insider_name: { type: string, example: "Intrator Michael N" }
+        insider_title: { type: string, example: "CEO and President" }
+        is_officer: { type: boolean }
+        is_director: { type: boolean }
+        is_ten_percent_owner: { type: boolean }
+        transaction_date:
+          type: string
+          format: date
+          description: Date of the group's last fill (a ladder can span days).
+          example: "2026-08-04"
+        filed_at:
+          type: string
+          format: date-time
+          description: When EDGAR accepted the filing (UTC).
+          example: "2026-08-07T00:36:56Z"
+        news_uid:
+          type: string
+          description: >-
+            Uid of the enriched news row fronting this event; matches
+            `original.uid` in the feeds.
+        news_title: { type: string }
+        news_published:
+          type: string
+          format: date-time
+          description: Publish time of the fronting news row.
+        has_article:
+          type: boolean
+          description: >-
+            Whether the alphai.io article page for `news_uid` exists. Events
+            ingested by the historical backfill have no enriched article;
+            render those without a link.
+
     Error:
       type: object
       properties:
@@ -874,3 +1772,8 @@ components:
             the archive 403 carries `reason: archive_horizon`, `tier`,
             `archive_days`. Both include an `upgrade` object (higher tiers'
             caps + `pricing_url`) for callers below Pro.
+            A 400 caused by an unknown query parameter additionally carries
+            `allowed_params` — the complete list this endpoint accepts, read
+            straight off the endpoint's own schema — plus `docs`, a link to the
+            developer reference. Individual entries in `extra.fields` may carry
+            a did-you-mean hint in their `msg`.
