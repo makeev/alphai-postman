@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: alphai REST API
-  version: "1.26.0"
+  version: "1.31.0"
   description: |
     Public REST API for alphai's relevance-scored, ticker-linked financial news.
     All endpoints accept `Authorization: Bearer ak_live_…` (issued from your
@@ -18,8 +18,17 @@ info:
     epoch seconds of the next 00:00 UTC reset) so you can watch your daily budget
     without provoking a 429. A per-minute burst surfaces only as a 429 with a
     short `Retry-After`. A 429 body also names your tier, its caps and an
-    `upgrade` block. The headers reflect origin processing, so a response
-    served from a shared cache may omit them.
+    `upgrade` block. A request rejected with 429 does not itself spend quota.
+    The headers reflect origin processing, so a response served from a shared
+    cache may omit them.
+
+    On the MCP server (`mcp.alphai.io`) the same two layers meter **tool calls
+    only** — the connect handshake (`initialize`, `tools/list`, notifications,
+    keepalives, the SSE stream) is protocol traffic and does not consume your
+    quota. It carries a separate, far larger ceiling that exists only to stop a
+    client reconnecting in a loop; hitting it returns a 429 whose body reports
+    `"window": "transport"`, which means your client is reconnecting too often,
+    not that you are out of quota.
 
     News-archive depth is tiered: Free keys can page the feeds back 30 days,
     Basic 90 days, Pro 180 days. Paging past your horizon returns `403`
@@ -51,12 +60,15 @@ info:
     Query parameters are validated strictly. An unknown or misspelled
     parameter returns 400 naming the field, and the error body carries
     `extra.allowed_params` — every parameter that endpoint accepts — so you
-    never have to guess. Common mix-ups also get a did-you-mean (`limit` and
-    `per_page` point to `page_size`; `offset`, `page`, `skip` and the
-    `after_id`/`before_id` family point to `cursor`; `ticker` points to
-    `symbol`). Parameters that belong to the MCP server rather than to this
-    API — free-text `q`/`query`/`search`, and `min_actionability` — say so
-    instead of failing silently.
+    never have to guess. The two most common spellings are simply accepted:
+    `limit` is an alias of `page_size` and `ticker` an alias of `symbol` on
+    the news feeds (same names the MCP tools use; sending both spellings of
+    one parameter in a single request is still a 400). Other mix-ups get a
+    did-you-mean (`per_page` points to `page_size`; `offset`, `page`, `skip`
+    and the `after_id`/`before_id` family point to `cursor`). Parameters that
+    belong to the MCP server rather than to this API — free-text
+    `q`/`query`/`search`, and `min_actionability` — say so instead of failing
+    silently.
 
     See https://alphai.io/developers for the score and sentiment legend, and
     https://alphai.io/pricing for tier limits.
@@ -156,7 +168,8 @@ paths:
             current ticker also matches articles tagged with its former
             ticker, and any share class of an issuer matches articles tagged
             with its other listed classes (`GOOGL` includes rows tagged
-            `GOOG`); article tags stay as published.
+            `GOOG`); article tags stay as published. `ticker` is accepted as
+            an alias.
           schema: { type: string, example: "NVDA" }
         - in: query
           name: category
@@ -191,6 +204,7 @@ paths:
             or an over-`20` page without a Pro key, returns 400 — the page is
             never silently clamped. Pagination is otherwise unchanged: pass each
             response's `next_cursor` back as `cursor` regardless of page size.
+            `limit` is accepted as an alias.
           schema: { type: integer, minimum: 1, maximum: 50, default: 10 }
         - in: query
           name: collapse
@@ -267,8 +281,11 @@ paths:
         independent write-ups of the same event alike, is collapsed to a
         single representative, and each item carries the `story_id`,
         `sources_count` and `sources` fields for the story it represents.
-        Most stories are carried by a single outlet, so `sources_count` is
-        usually 1; see its field description.
+        `story_id` is the story ROOT's uid — the stable story key shared with
+        `?collapse=story` and the MCP tools — while the item itself is the
+        story's strongest-ranked member, so `story_id` may differ from the
+        item's own `original.uid`. Most stories are carried by a single
+        outlet, so `sources_count` is usually 1; see its field description.
       responses:
         "200":
           description: List of enriched articles.
@@ -314,7 +331,8 @@ paths:
           description: >-
             Filter to insider news that mentions this ticker. Delisted
             symbols return their history; a renamed company's current ticker
-            also matches rows tagged with its former ticker.
+            also matches rows tagged with its former ticker. `ticker` is
+            accepted as an alias.
           schema: { type: string, example: "NVDA" }
         - in: query
           name: min_relevance
@@ -342,7 +360,8 @@ paths:
           description: >-
             Items per page, default `10`. Any value from `1` to `20` is accepted
             on every tier; `21`-`50` requires a Pro key. A value outside `1`-`50`,
-            or an over-`20` page without a Pro key, returns 400.
+            or an over-`20` page without a Pro key, returns 400. `limit` is
+            accepted as an alias.
           schema: { type: integer, minimum: 1, maximum: 50, default: 10 }
         - in: query
           name: sort
@@ -439,7 +458,8 @@ paths:
           description: >-
             Items per page, default `10`. Any value from `1` to `20` is accepted
             on every tier; `21`-`50` requires a Pro key. A value outside `1`-`50`,
-            or an over-`20` page without a Pro key, returns 400.
+            or an over-`20` page without a Pro key, returns 400. `limit` is
+            accepted as an alias.
           schema: { type: integer, minimum: 1, maximum: 50, default: 10 }
         - in: query
           name: sort
@@ -708,6 +728,84 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "429": { $ref: "#/components/responses/RateLimited" }
 
+  /api/symbols/{ticker}/earnings/:
+    get:
+      tags: [symbols]
+      summary: AlphaAI earnings reads for one ticker, plus its next report date
+      description: |
+        Every published AlphaAI earnings read for the ticker, newest first, and
+        the date of its next report when the company has confirmed one.
+
+        A read is produced from the company's own SEC filing — an 8-K item 2.02
+        for US filers, a 6-K earnings release for foreign private issuers —
+        within minutes of it reaching EDGAR, and every number in it is verified
+        against the filing text before publication. `/earnings/latest/` returns
+        just a pointer to the newest one; this endpoint returns the analyses
+        themselves.
+
+        Bridges share classes: a request for one class returns the reads filed
+        under the issuer's primary class, and each row's `ticker` names the
+        class it was actually filed under, which may differ from the one you
+        asked for.
+
+        Unpaginated and capped at 20 reads. Depth is currently shallow by
+        construction — AlphaAI's own filing history starts in mid-June 2026 and
+        reports arrive quarterly — so most tickers carry one or two.
+      parameters:
+        - in: path
+          name: ticker
+          required: true
+          description: >-
+            Accepts the same ticker forms as the symbol detail endpoint.
+          schema: { type: string, pattern: "^[A-Z0-9][A-Z0-9.\\-]{0,19}$" }
+      responses:
+        "200":
+          description: >-
+            The ticker's earnings reads. An empty `reports` array is a normal
+            answer, not an error: it means no read has been published yet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TickerEarningsHistory" }
+        "400": { description: Malformed ticker. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404":
+          description: >-
+            Unknown symbol — no listing owns this string (error code
+            `unknown_symbol`). Look tickers up via `/api/symbols/?search=`.
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /api/symbols/{ticker}/earnings/latest/:
+    get:
+      tags: [symbols]
+      summary: Most recent AlphaAI earnings read for one ticker
+      description: |
+        A pointer to the ticker's most recent published earnings read (SEC 8-K
+        item 2.02, or a foreign private issuer's 6-K earnings release). Resolve
+        the full analysis via `/api/news/{uid}/`, whose
+        `earnings` object carries it. Bridges share classes: a request for one
+        class returns the read filed under the issuer's primary class.
+      parameters:
+        - in: path
+          name: ticker
+          required: true
+          description: >-
+            Accepts the same ticker forms as the symbol detail endpoint.
+          schema: { type: string, pattern: "^[A-Z0-9][A-Z0-9.\\-]{0,19}$" }
+      responses:
+        "200":
+          description: The ticker's most recent earnings read pointer.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LatestEarningsPointer" }
+        "204": { description: No earnings read exists for this ticker yet. }
+        "400": { description: Malformed ticker. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404":
+          description: >-
+            Unknown symbol — no listing owns this string (error code
+            `unknown_symbol`). Look tickers up via `/api/symbols/?search=`.
+        "429": { $ref: "#/components/responses/RateLimited" }
+
   /api/symbols/{ticker}/insider-trades/:
     get:
       tags: [symbols]
@@ -763,6 +861,7 @@ paths:
           description: >-
             Events per page. Not tier-gated: every tier may request up to
             200, so one request can load a chart's whole working set.
+            `limit` is accepted as an alias.
           schema: { type: integer, minimum: 1, maximum: 200, default: 20 }
       responses:
         "200":
@@ -867,7 +966,9 @@ components:
         is `X-RateLimit-Reset`). The `X-RateLimit-*` trio shows the daily volume
         budget. The body's `extra` names your tier, its `limit_per_minute` /
         `limit_per_day`, `retry_after_seconds`, and — below Pro — an `upgrade`
-        block with the higher tiers' caps and the pricing URL.
+        block with the higher tiers' caps and the pricing URL. A rejected
+        request does not itself consume quota, so retrying after `Retry-After`
+        costs you nothing extra.
       headers:
         Retry-After:
           description: Seconds to wait before retrying (burst ≤60s; day cap ≤3600s).
@@ -919,7 +1020,9 @@ components:
         (Item 2.02) is `earnings`, a completed acquisition or disposition
         (Item 2.01) is `mergers_acquisitions`, and the remaining events
         (material agreements, debt, executive changes, annual-meeting
-        results) are `corporate_actions`.
+        results) are `corporate_actions`. A foreign private issuer's SEC 6-K
+        appears only when it is an earnings release (`source` "SEC EDGAR
+        6-K") and is always `earnings`.
       enum:
         - earnings
         - mergers_acquisitions
@@ -1185,21 +1288,168 @@ components:
         ai_trading_insights: { $ref: "#/components/schemas/AITradingInsights" }
         news_context_enhancement: { $ref: "#/components/schemas/NewsContextEnhancement" }
 
+    EarningsReport:
+      type: object
+      description: >-
+        AlphaAI's own structured analysis of an earnings release (SEC Form 8-K
+        item 2.02, or Form 6-K for a foreign private issuer — half-year and
+        full-year periods, IFRS and non-USD figures copied as reported). Every
+        figure was cross-checked against the filing text before storage;
+        consensus estimates and price targets are omitted because they are
+        not in the filing.
+      required: [company, ticker, fiscal_period, headline, verdict, key_metrics, analysis]
+      properties:
+        company: { type: string }
+        ticker: { type: string }
+        fiscal_period: { type: string, example: "Second Quarter Fiscal 2027" }
+        period_end: { type: string, nullable: true }
+        headline: { type: string }
+        verdict: { type: string, enum: [strong, solid, mixed, weak] }
+        verdict_reason: { type: string }
+        key_metrics:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              value: { type: string, example: "$96.2 billion" }
+              basis: { type: string, enum: [GAAP, non-GAAP, other] }
+              prior_year: { type: string, nullable: true }
+              prior_quarter: { type: string, nullable: true }
+              yoy_change: { type: string, nullable: true }
+              qoq_change: { type: string, nullable: true }
+        segments:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              revenue: { type: string }
+              yoy_change: { type: string, nullable: true }
+              qoq_change: { type: string, nullable: true }
+              driver: { type: string }
+        guidance:
+          type: object
+          nullable: true
+          properties:
+            period: { type: string }
+            revenue: { type: string, nullable: true }
+            gross_margin: { type: string, nullable: true }
+            operating_expenses: { type: string, nullable: true }
+            tax_rate: { type: string, nullable: true }
+            other: { type: array, items: { type: string } }
+        vs_prior_guidance:
+          type: array
+          description: Reported figure vs the company's own prior outlook, when available.
+          items:
+            type: object
+            properties:
+              metric: { type: string }
+              prior_guidance: { type: string }
+              actual: { type: string }
+              verdict: { type: string, enum: [above, "in line", below, "n/a"] }
+        capital_returns: { type: array, items: { type: string } }
+        balance_sheet_cash_flow: { type: array, items: { type: string } }
+        drivers: { type: array, items: { type: string } }
+        concerns: { type: array, items: { type: string } }
+        what_to_watch: { type: array, items: { type: string } }
+        quotes:
+          type: array
+          items:
+            type: object
+            properties:
+              speaker: { type: string }
+              role: { type: string, nullable: true }
+              text: { type: string }
+        analysis: { type: string, description: "Several paragraphs of grounded analysis." }
+        missing_items:
+          type: array
+          items: { type: string }
+          description: What the filing did NOT state, named rather than guessed.
+        numbers_verified_from_document: { type: boolean }
+
+    LatestEarningsPointer:
+      type: object
+      description: Pointer to a ticker's most recent earnings read (for the article link).
+      required: [uid, time_published, title, fiscal_period, verdict, headline]
+      properties:
+        uid: { type: string, description: "Article uid; resolve the full read via /api/news/{uid}/." }
+        time_published: { type: string, format: date-time }
+        title: { type: string }
+        fiscal_period: { type: string }
+        verdict: { type: string, enum: [strong, solid, mixed, weak] }
+        headline: { type: string }
+
+    TickerEarningsReport:
+      type: object
+      description: One published AlphaAI earnings read in a ticker's history.
+      required: [uid, time_published, title, source_type, ticker, fiscal_period, analysis]
+      properties:
+        uid: { type: string, description: "Article uid; the same read is served inline by /api/news/{uid}/." }
+        time_published: { type: string, format: date-time }
+        title: { type: string, description: "The filing's own title." }
+        source_type:
+          type: string
+          enum: [sec_form8k, sec_form6k]
+          description: "`sec_form8k` for a US filer's item 2.02, `sec_form6k` for a foreign private issuer's earnings release."
+        ticker:
+          type: string
+          description: >-
+            The share class the filing was actually made under, which is not
+            always the one requested — SEC-sourced rows tag one class per
+            issuer, so a GOOGL request carries reads filed under GOOG.
+        fiscal_period: { type: string, example: "Second Quarter Fiscal 2027" }
+        analysis: { $ref: "#/components/schemas/EarningsReport" }
+
+    TickerEarningsHistory:
+      type: object
+      required: [ticker, reports]
+      properties:
+        ticker: { type: string, description: "The requested ticker, normalized to upper case." }
+        reports:
+          type: array
+          items: { $ref: "#/components/schemas/TickerEarningsReport" }
+          description: Newest first, capped at 20. Empty when no read exists yet.
+        next_report_date:
+          type: string
+          format: date
+          nullable: true
+          example: "2026-11-17"
+          description: >-
+            Same field, same rules, as `next_report_date` on the symbol detail
+            response: the company-confirmed date of the next report in
+            America/New_York, or `null` when AlphaAI holds no confirmed one.
+            Never an estimate.
+
     RichNewsArticle:
       type: object
       required: [original, enrichment]
       properties:
         original: { $ref: "#/components/schemas/OriginalArticle" }
         enrichment: { $ref: "#/components/schemas/EnrichedArticle" }
+        earnings:
+          allOf: [{ $ref: "#/components/schemas/EarningsReport" }]
+          nullable: true
+          description: >-
+            AlphaAI's structured read of the company's SEC earnings filing
+            (8-K item 2.02, or a foreign private issuer's 6-K earnings
+            release). Present only on a major ticker's earnings article whose
+            figures cleared a cross-check against the filing text; null on
+            every other article.
         story_id:
           type: string
           nullable: true
           description: >-
             Populated whenever the response is story-collapsed — `?collapse=story`
             on `/api/news/`, and always on `/api/news/trending/`. The `uid` of
-            this story's representative article — equal to this item's own
-            `original.uid`, and resolvable via `/api/news/{uid}/`. `null` in the
-            default (uncollapsed) feed.
+            the story's ROOT article — the same value for a given story on every
+            collapsing surface (this feed, trending, and the MCP tools) and
+            across calls, so it works as a stable story key. On `?collapse=story`
+            the root is the row itself, so it equals this item's own
+            `original.uid`; on `/api/news/trending/` the item is the story's
+            strongest-ranked member, which may differ from the root. Either way
+            it resolves via `/api/news/{uid}/`. `null` in the default
+            (uncollapsed) feed.
           example: "788e477c66f3849b"
         sources_count:
           type: integer
@@ -1368,6 +1618,42 @@ components:
             Trading currency. `USD` for SEC-listed symbols and crypto pairs, the
             local currency for foreign listings.
           example: USD
+        next_report_date:
+          type: string
+          format: date
+          nullable: true
+          example: "2026-11-17"
+          description: >-
+            The next earnings date the company itself has confirmed, in
+            America/New_York. Detail responses only.
+
+
+            **Never an estimate.** `null` means AlphaAI holds no confirmed date
+            — NOT that the company does not report. Confirmed dates typically
+            surface about five weeks ahead, so `null` further out is the normal
+            state, and coverage at any moment is partial. We deliberately do
+            not fill the gap with a projection from the reporting cadence: a
+            date nothing corroborates is indistinguishable downstream from one
+            that does.
+
+
+            Bridges share classes: a request for one class answers with the
+            issuer's confirmed date whichever class it was filed under.
+        supports_insider:
+          type: boolean
+          example: true
+          description: >-
+            Whether this symbol has SEC Form 4 insider data — true for
+            US SEC-listed equities, false for crypto and foreign listings.
+            When false, `/insider-summary/` and `/insider-trades/` return
+            empty rather than failing. Detail responses only.
+        tv_symbol:
+          type: string
+          example: ""
+          description: >-
+            Per-symbol TradingView symbol override, when the venue-prefix rule
+            built from `exchange` does not produce the right chart symbol.
+            Empty for almost every row. Detail responses only.
         status:
           type: string
           example: active
