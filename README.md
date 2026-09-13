@@ -19,8 +19,8 @@ Every article is enriched at ingest with per-ticker impact analysis, a category,
 
 1. **Get an API key** — sign up at [alphai.io](https://alphai.io) and create one at [`/account/api-keys`](https://alphai.io/account/api-keys). Keys look like `ak_live_…`.
 2. **Import into Postman** — import both files from this repo:
-   - `AlphAI.postman_collection.json` (the requests)
-   - `AlphAI.postman_environment.json` (the `baseUrl` + `bearerToken` variables)
+   - `AlphaAI.postman_collection.json` (the requests)
+   - `AlphaAI.postman_environment.json` (the `baseUrl` + `bearerToken` variables)
 3. **Select the "AlphAI — Production" environment**, paste your key into the `bearerToken` variable, and hit **Send** on any request.
 
 That's it — auth is set at the collection level (`Authorization: Bearer {{bearerToken}}`) and `baseUrl` points at `https://api.alphai.io`, so every request just works.
@@ -69,7 +69,7 @@ Every response carries `X-RateLimit-Limit` / `-Remaining` / `-Reset` (the daily 
 The collection is generated from the canonical **OpenAPI 3.1** spec (`openapi.yaml`, mirrored here from the live `/api/schema/`) with Postman's official converter:
 
 ```bash
-npx openapi-to-postmanv2 -s openapi.yaml -o AlphAI.postman_collection.json -p \
+npx openapi-to-postmanv2 -s openapi.yaml -o AlphaAI.postman_collection.json -p \
   -O folderStrategy=Tags,requestParametersResolution=Example
 ```
 
