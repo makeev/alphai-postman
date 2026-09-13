@@ -1,12 +1,12 @@
-# AlphaAI — Postman Collection
+# AlphAI — Postman Collection
 
-Official [Postman](https://www.postman.com/) collection for the **[AlphaAI](https://alphai.io/developers)** REST API — relevance-scored, ticker-linked financial news (plus SEC Form 4 insider data) for AI agents and trading bots.
+Official [Postman](https://www.postman.com/) collection for the **[AlphAI](https://alphai.io/developers)** REST API — relevance-scored, ticker-linked financial news (plus SEC Form 4 insider data) for AI agents and trading bots.
 
 Every article is enriched at ingest with per-ticker impact analysis, a category, and a **1–10 relevance score**. Consume it here over REST, or as an [MCP server](https://mcp.alphai.io) in Claude Desktop / Cursor / any agent.
 
 [![Run In Postman](https://run.pstmn.io/button.svg)](https://god.gw.postman.com/run-collection/2739899-cd75bd32-0a53-447d-9d4f-e128a59f6a6d?action=collection%2Ffork&source=rip_markdown&collection-url=entityId%3D2739899-cd75bd32-0a53-447d-9d4f-e128a59f6a6d%26entityType%3Dcollection%26workspaceId%3Dd70a2107-3c17-4b47-926b-897627b18df5)
 
-**Live on the Postman API Network** → [AlphaAI — Financial News REST API](https://www.postman.com/mmakeevs-team/alphaai-financial-news-api/collection/47weadt/alphaai-financial-news-rest-api)
+**Live on the Postman API Network** → [AlphAI — Financial News REST API](https://www.postman.com/mmakeevs-team/alphaai-financial-news-api/collection/47weadt/alphaai-financial-news-rest-api)
 
 - 🔑 **Free tier, no card** — 20 req/min · 100/day
 - 📖 **Live docs & playground** — <https://alphai.io/developers>
@@ -19,9 +19,9 @@ Every article is enriched at ingest with per-ticker impact analysis, a category,
 
 1. **Get an API key** — sign up at [alphai.io](https://alphai.io) and create one at [`/account/api-keys`](https://alphai.io/account/api-keys). Keys look like `ak_live_…`.
 2. **Import into Postman** — import both files from this repo:
-   - `AlphaAI.postman_collection.json` (the requests)
-   - `AlphaAI.postman_environment.json` (the `baseUrl` + `bearerToken` variables)
-3. **Select the "AlphaAI — Production" environment**, paste your key into the `bearerToken` variable, and hit **Send** on any request.
+   - `AlphAI.postman_collection.json` (the requests)
+   - `AlphAI.postman_environment.json` (the `baseUrl` + `bearerToken` variables)
+3. **Select the "AlphAI — Production" environment**, paste your key into the `bearerToken` variable, and hit **Send** on any request.
 
 That's it — auth is set at the collection level (`Authorization: Bearer {{bearerToken}}`) and `baseUrl` points at `https://api.alphai.io`, so every request just works.
 
@@ -69,7 +69,7 @@ Every response carries `X-RateLimit-Limit` / `-Remaining` / `-Reset` (the daily 
 The collection is generated from the canonical **OpenAPI 3.1** spec (`openapi.yaml`, mirrored here from the live `/api/schema/`) with Postman's official converter:
 
 ```bash
-npx openapi-to-postmanv2 -s openapi.yaml -o AlphaAI.postman_collection.json -p \
+npx openapi-to-postmanv2 -s openapi.yaml -o AlphAI.postman_collection.json -p \
   -O folderStrategy=Tags,requestParametersResolution=Example
 ```
 

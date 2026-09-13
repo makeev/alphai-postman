@@ -4441,11 +4441,11 @@
                 },
                 {
                     "id": "ea467def-0d67-4216-af3e-3b52da2d5603",
-                    "name": "AlphaAI earnings reads for one ticker, plus its next report date",
+                    "name": "AlphAI earnings reads for one ticker, plus its next report date",
                     "request": {
-                        "name": "AlphaAI earnings reads for one ticker, plus its next report date",
+                        "name": "AlphAI earnings reads for one ticker, plus its next report date",
                         "description": {
-                            "content": "Every published AlphaAI earnings read for the ticker, newest first, and\nthe date of its next report when the company has confirmed one.\n\nA read is produced from the company's own SEC filing — an 8-K item 2.02\nfor US filers, a 6-K earnings release for foreign private issuers —\nwithin minutes of it reaching EDGAR, and every number in it is verified\nagainst the filing text before publication. `/earnings/latest/` returns\njust a pointer to the newest one; this endpoint returns the analyses\nthemselves.\n\nBridges share classes: a request for one class returns the reads filed\nunder the issuer's primary class, and each row's `ticker` names the\nclass it was actually filed under, which may differ from the one you\nasked for.\n\nUnpaginated and capped at 20 reads. Depth is currently shallow by\nconstruction — AlphaAI's own filing history starts in mid-June 2026 and\nreports arrive quarterly — so most tickers carry one or two.\n",
+                            "content": "Every published AlphAI earnings read for the ticker, newest first, and\nthe date of its next report when the company has confirmed one.\n\nA read is produced from the company's own SEC filing — an 8-K item 2.02\nfor US filers, a 6-K earnings release for foreign private issuers —\nwithin minutes of it reaching EDGAR, and every number in it is verified\nagainst the filing text before publication. `/earnings/latest/` returns\njust a pointer to the newest one; this endpoint returns the analyses\nthemselves.\n\nBridges share classes: a request for one class returns the reads filed\nunder the issuer's primary class, and each row's `ticker` names the\nclass it was actually filed under, which may differ from the one you\nasked for.\n\nUnpaginated and capped at 20 reads. Depth is currently shallow by\nconstruction — AlphAI's own filing history starts in mid-June 2026 and\nreports arrive quarterly — so most tickers carry one or two.\n",
                             "type": "text/plain"
                         },
                         "url": {
@@ -4798,9 +4798,9 @@
                 },
                 {
                     "id": "bdc7307f-083d-4a7f-b3bc-b9a3ecfb04aa",
-                    "name": "Most recent AlphaAI earnings read for one ticker",
+                    "name": "Most recent AlphAI earnings read for one ticker",
                     "request": {
-                        "name": "Most recent AlphaAI earnings read for one ticker",
+                        "name": "Most recent AlphAI earnings read for one ticker",
                         "description": {
                             "content": "A pointer to the ticker's most recent published earnings read (SEC 8-K\nitem 2.02, or a foreign private issuer's 6-K earnings release). Resolve\nthe full analysis via `/api/news/{uid}/`, whose\n`earnings` object carries it. Bridges share classes: a request for one\nclass returns the read filed under the issuer's primary class.\n",
                             "type": "text/plain"

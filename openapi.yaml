@@ -731,9 +731,9 @@ paths:
   /api/symbols/{ticker}/earnings/:
     get:
       tags: [symbols]
-      summary: AlphaAI earnings reads for one ticker, plus its next report date
+      summary: AlphAI earnings reads for one ticker, plus its next report date
       description: |
-        Every published AlphaAI earnings read for the ticker, newest first, and
+        Every published AlphAI earnings read for the ticker, newest first, and
         the date of its next report when the company has confirmed one.
 
         A read is produced from the company's own SEC filing — an 8-K item 2.02
@@ -749,7 +749,7 @@ paths:
         asked for.
 
         Unpaginated and capped at 20 reads. Depth is currently shallow by
-        construction — AlphaAI's own filing history starts in mid-June 2026 and
+        construction — AlphAI's own filing history starts in mid-June 2026 and
         reports arrive quarterly — so most tickers carry one or two.
       parameters:
         - in: path
@@ -777,7 +777,7 @@ paths:
   /api/symbols/{ticker}/earnings/latest/:
     get:
       tags: [symbols]
-      summary: Most recent AlphaAI earnings read for one ticker
+      summary: Most recent AlphAI earnings read for one ticker
       description: |
         A pointer to the ticker's most recent published earnings read (SEC 8-K
         item 2.02, or a foreign private issuer's 6-K earnings release). Resolve
@@ -1175,7 +1175,7 @@ components:
           type: string
           format: date-time
           description: >-
-            When AlphaAI received the article — NOT its publish time (that is
+            When AlphAI received the article — NOT its publish time (that is
             `time_published`). Use it to judge how fresh a pickup is. Do not
             build "what's new" polling on this field; that is what
             `sort=ingested` on `/api/news/` and `/api/news/insider/` is for.
@@ -1291,7 +1291,7 @@ components:
     EarningsReport:
       type: object
       description: >-
-        AlphaAI's own structured analysis of an earnings release (SEC Form 8-K
+        AlphAI's own structured analysis of an earnings release (SEC Form 8-K
         item 2.02, or Form 6-K for a foreign private issuer — half-year and
         full-year periods, IFRS and non-USD figures copied as reported). Every
         figure was cross-checked against the filing text before storage;
@@ -1382,7 +1382,7 @@ components:
 
     TickerEarningsReport:
       type: object
-      description: One published AlphaAI earnings read in a ticker's history.
+      description: One published AlphAI earnings read in a ticker's history.
       required: [uid, time_published, title, source_type, ticker, fiscal_period, analysis]
       properties:
         uid: { type: string, description: "Article uid; the same read is served inline by /api/news/{uid}/." }
@@ -1418,7 +1418,7 @@ components:
           description: >-
             Same field, same rules, as `next_report_date` on the symbol detail
             response: the company-confirmed date of the next report in
-            America/New_York, or `null` when AlphaAI holds no confirmed one.
+            America/New_York, or `null` when AlphAI holds no confirmed one.
             Never an estimate.
 
     RichNewsArticle:
@@ -1431,7 +1431,7 @@ components:
           allOf: [{ $ref: "#/components/schemas/EarningsReport" }]
           nullable: true
           description: >-
-            AlphaAI's structured read of the company's SEC earnings filing
+            AlphAI's structured read of the company's SEC earnings filing
             (8-K item 2.02, or a foreign private issuer's 6-K earnings
             release). Present only on a major ticker's earnings article whose
             figures cleared a cross-check against the filing text; null on
@@ -1628,7 +1628,7 @@ components:
             America/New_York. Detail responses only.
 
 
-            **Never an estimate.** `null` means AlphaAI holds no confirmed date
+            **Never an estimate.** `null` means AlphAI holds no confirmed date
             — NOT that the company does not report. Confirmed dates typically
             surface about five weeks ahead, so `null` further out is the normal
             state, and coverage at any moment is partial. We deliberately do
