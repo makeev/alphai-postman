@@ -95,9 +95,18 @@ The collection is generated from the canonical **OpenAPI 3.1** spec (`openapi.ya
 curl -s https://api.alphai.io/api/schema/ -o openapi.yaml
 npx openapi-to-postmanv2 -s openapi.yaml -o /tmp/collection.json -p \
   -O folderStrategy=Tags,requestParametersResolution=Example
-# keep the published collection's id and name, so a Postman import replaces it in place
+# keep the published collection's id and name
 jq --indent 4 '.info._postman_id = "cd75bd32-0a53-447d-9d4f-e128a59f6a6d" | .info.name = "AlphAI — Financial News REST API"' \
   /tmp/collection.json > AlphaAI.postman_collection.json
+```
+
+Postman's importer (web and desktop) always creates a new collection, so the
+published one is replaced in place through the Postman API instead:
+
+```bash
+jq -c '{collection: .}' AlphaAI.postman_collection.json > /tmp/put.json
+curl -sS -X PUT "https://api.getpostman.com/collections/2739899-cd75bd32-0a53-447d-9d4f-e128a59f6a6d" \
+  -H "X-Api-Key: $POSTMAN_API_KEY" -H "Content-Type: application/json" --data @/tmp/put.json
 ```
 
 ## Links
