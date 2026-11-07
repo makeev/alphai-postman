@@ -1,6 +1,6 @@
 # AlphAI — Postman Collection
 
-Official [Postman](https://www.postman.com/) collection for the **[AlphAI](https://alphai.io/developers)** REST API — relevance-scored, ticker-linked financial news (plus SEC Form 4 insider data) for AI agents and trading bots.
+Official [Postman](https://www.postman.com/) collection for the **[AlphAI](https://alphai.io/developers)** REST API — relevance-scored, ticker-linked financial news for AI agents and trading bots, plus multi-publisher stories, SEC Form 4 insider data and earnings reads checked against the filing.
 
 Every article is enriched at ingest with per-ticker impact analysis, a category, and a **1–10 relevance score**. Consume it here over REST, or as an [MCP server](https://mcp.alphai.io) in Claude Desktop / Cursor / any agent.
 
@@ -36,10 +36,22 @@ curl -H "Authorization: Bearer ak_live_…" "https://api.alphai.io/api/news/?sym
 | Request | Path |
 |---|---|
 | List news (cursor-paginated) | `GET /api/news/` |
+| Full-text search over the feed | `GET /api/news/search/` |
 | Trending news (last 48h) | `GET /api/news/trending/` |
 | Insider-transaction news (SEC Form 4) | `GET /api/news/insider/` |
+| Insider cluster buys | `GET /api/news/insider/clusters/` |
+| Market-wide macro news | `GET /api/news/macro/` |
+| A compact brief across several tickers | `GET /api/news/brief/` |
 | Get a news article by UID | `GET /api/news/{uid}/` |
 | Articles related to one article | `GET /api/news/{uid}/related/` |
+
+### Stories
+| Request | Path |
+|---|---|
+| Top stories (last 48h) | `GET /api/stories/top/` |
+| Latest stories (cursor-paginated) | `GET /api/stories/` |
+| Get a story by its id | `GET /api/stories/{story_id}/` |
+| A story's articles | `GET /api/stories/{story_id}/materials/` |
 
 ### Symbols
 | Request | Path |
@@ -48,9 +60,20 @@ curl -H "Authorization: Bearer ak_live_…" "https://api.alphai.io/api/news/?sym
 | Symbol detail | `GET /api/symbols/{ticker}/` |
 | 7-day AI sentiment rollup | `GET /api/symbols/{ticker}/sentiment-summary/` |
 | 30-day insider rollup | `GET /api/symbols/{ticker}/insider-summary/` |
+| Earnings reads and the next report date | `GET /api/symbols/{ticker}/earnings/` |
+| Most recent earnings read | `GET /api/symbols/{ticker}/earnings/latest/` |
+| Form 4 event history | `GET /api/symbols/{ticker}/insider-trades/` |
 | Related tickers (peers) | `GET /api/symbols/{ticker}/peers/` |
 | Stock directory | `GET /api/symbols/directory/` |
 | Sector's most-covered tickers | `GET /api/symbols/sectors/{slug}/` |
+
+### Calendars, Radar, coverage
+| Request | Path |
+|---|---|
+| Scheduled US macro releases | `GET /api/calendar/` |
+| Earnings calendar: who reports when, who just reported | `GET /api/calendar/earnings/` |
+| Radar: news activity by ticker | `GET /api/signals/snapshot/` |
+| Coverage passport: what each source holds and from when | `GET /api/coverage/` |
 
 ## Auth & rate limits
 
@@ -60,7 +83,7 @@ Send `Authorization: Bearer ak_live_…` on **every** request to `api.alphai.io`
 |---|---|---|---|
 | Free | 20 | 100 | 30 days |
 | Basic | 60 | 10,000 | 90 days |
-| Pro | 150 | 100,000 | full |
+| Pro | 150 | 100,000 | 180 days |
 
 Every response carries `X-RateLimit-Limit` / `-Remaining` / `-Reset` (the daily layer). A `429` names your tier, its caps, and an `upgrade` hint. Full semantics live in the [OpenAPI spec](https://api.alphai.io/api/schema/) and on [`/developers`](https://alphai.io/developers).
 
@@ -69,8 +92,12 @@ Every response carries `X-RateLimit-Limit` / `-Remaining` / `-Reset` (the daily 
 The collection is generated from the canonical **OpenAPI 3.1** spec (`openapi.yaml`, mirrored here from the live `/api/schema/`) with Postman's official converter:
 
 ```bash
-npx openapi-to-postmanv2 -s openapi.yaml -o AlphaAI.postman_collection.json -p \
+curl -s https://api.alphai.io/api/schema/ -o openapi.yaml
+npx openapi-to-postmanv2 -s openapi.yaml -o /tmp/collection.json -p \
   -O folderStrategy=Tags,requestParametersResolution=Example
+# keep the published collection's id and name, so a Postman import replaces it in place
+jq --indent 4 '.info._postman_id = "cd75bd32-0a53-447d-9d4f-e128a59f6a6d" | .info.name = "AlphAI — Financial News REST API"' \
+  /tmp/collection.json > AlphaAI.postman_collection.json
 ```
 
 ## Links
