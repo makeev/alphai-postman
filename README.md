@@ -100,8 +100,8 @@ jq --indent 4 '.info._postman_id = "cd75bd32-0a53-447d-9d4f-e128a59f6a6d" | .inf
   /tmp/collection.json > AlphaAI.postman_collection.json
 ```
 
-Postman's importer (web and desktop) always creates a new collection, so the
-published one is replaced in place through the Postman API instead:
+Postman's web importer creates a new collection instead of replacing one, so the
+published collection is replaced in place through the Postman API:
 
 ```bash
 jq -c '{collection: .}' AlphaAI.postman_collection.json > /tmp/put.json
