@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: AlphAI REST API
-  version: "1.59.0"
+  version: "1.61.0"
   description: |
     Public REST API for AlphAI's relevance-scored, ticker-linked financial news.
     All endpoints accept `Authorization: Bearer ak_live_…` (issued from your
@@ -120,6 +120,13 @@ info:
     withdraws a release, it drops out of the feeds and search without a separate
     event, and `/api/news/{uid}/` answers 404 with `redirect_to` set to the page,
     which then shows a short notice instead of the text.
+
+    Bloomberg rows (`source_domain` `bloomberg.com`) come from Bloomberg's public
+    headline feeds: the `title` ends with ", Bloomberg reports", the `summary` is
+    AlphAI's own one-sentence restatement of the item (or the attributed headline
+    itself when no restatement passed our checks), and the analysis is drawn from
+    the headline and that sentence, never from the article. Their `url` is the
+    Bloomberg article, which requires a Bloomberg subscription to read.
 
     Query parameters are validated strictly. An unknown or misspelled
     parameter returns 400 naming the field, and the error body carries
@@ -402,13 +409,52 @@ paths:
             SEC served no document for has an empty item list and never
             matches. Every matched row carries the `filing` block.
           schema: { type: string, pattern: "^\\d\\.\\d{2}$", example: "5.02" }
+        - in: query
+          name: event_type
+          description: >-
+            Corporate event type, e.g. `buyback`, `m_and_a`, `exec_change`
+            (the full list is `CorporateEventType`). Keeps only rows whose
+            `event` block is of that type, as the main event or as one of the
+            events in `event.also`, so `event_type=buyback` also finds a
+            buyback announced inside an earnings release. Same single / CSV /
+            repeated forms as `category`, OR-matched:
+            `event_type=buyback,dividend` is every capital return. Events are
+            read from SEC 8-K filings, 6-K earnings releases and PR Newswire
+            releases, so only those rows can match; press coverage of the same
+            event carries no `event`. Composes with the other filters
+            (`event_type=m_and_a&symbol=NVDA`, `event_type=offering&from_date=…`)
+            in the default `sort=published` order. With `sort=ingested` it
+            returns 400: a row gets its event after it enters the feed, so a
+            delta cursor would already be past it. To follow new events, poll
+            `sort=published` with `from_date` and de-duplicate by `uid`. With
+            `collapse=story` only the row that leads its story is matched, so
+            a filing that joined a story a publisher started is left out; omit
+            `collapse` for the complete list. An unknown type returns 400 with
+            the allowed values; so does `event_type` next to a `source_type`
+            that names only `sec_form4`.
+          style: form
+          explode: true
+          schema:
+            type: array
+            items: { $ref: "#/components/schemas/CorporateEventType" }
+          example: ["buyback", "dividend"]
       responses:
         "200":
           description: A page of enriched articles.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/NewsPagination" }
-        "400": { description: Invalid cursor (opaque; reuse `next_cursor`), a cursor replayed into the other `sort` mode, a date window combined with `sort=ingested` or with `from_date` after `to_date`, unsupported `collapse`/`sort` value, a `page_size` outside 1-50 or not permitted on this tier, an unknown `source_type`, a malformed `item`, or `item` combined with a `source_type` other than `sec_form8k`. }
+        "400":
+          description: >-
+            Invalid cursor (opaque; reuse `next_cursor`), a cursor replayed
+            into the other `sort` mode, a date window combined with
+            `sort=ingested` or with `from_date` after `to_date`, unsupported
+            `collapse`/`sort` value, a `page_size` outside 1-50 or not
+            permitted on this tier, an unknown `source_type`, a malformed
+            `item`, `item` combined with a `source_type` other than
+            `sec_form8k`, an unknown `event_type` (the body lists the allowed
+            values), `event_type` combined with a `source_type` whose rows
+            carry no events, or `event_type` combined with `sort=ingested`.
         "403": { $ref: "#/components/responses/ArchiveGated" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "429": { $ref: "#/components/responses/RateLimited" }
@@ -644,14 +690,32 @@ paths:
           description: >-
             Filter on the same field each item's `insider` block reports: the
             event's Rule 10b5-1 status. Omit for every event; `false` returns
-            discretionary trades only — the "hide pre-scheduled sales" dial,
-            since a 10b5-1 ladder was set up months earlier and carries no
-            timing decision; `true` returns plan events only. Event-level, like
-            the field itself: a filing whose group mixes plan and discretionary
-            tranches counts as a plan event on both. The two values partition
-            the feed, so `true` and `false` pages always add up to the
+            events not under a 10b5-1 plan; `true` returns plan events only.
+            Event-level, like the field itself: a filing whose group mixes plan
+            and non-plan tranches counts as a plan event on both. The two values
+            partition the feed, so `true` and `false` pages always add up to the
             unfiltered one.
+
+            "Not under a plan" is not the same as "the insider's own decision".
+            A sale outside a plan can still be paperwork: shares sold to pay the
+            tax on vesting, or a sale that only covers the cost of an option
+            exercise. For sales the insider chose to make, use
+            `decision=discretionary`.
           schema: { type: boolean }
+        - in: query
+          name: decision
+          description: >-
+            Filter on the sale label each item's `insider` block reports
+            (`decision`). `discretionary` returns sales the insider chose to
+            make; `plan_like` returns sales that follow from a 10b5-1 plan or
+            from paperwork (a tax sale on vesting, a sale covering an option
+            exercise); `unknown` returns sales the filing does not let us read.
+            Only sales (`transaction_code` `S`) are labelled. Purchases and
+            other codes carry `decision: null` and match none of the values, so
+            the three filtered feeds plus the events without a sale add up to
+            the unfiltered one. Combines with `is_10b5_1`, `sort=ingested` and
+            every other filter.
+          schema: { type: string, enum: [discretionary, plan_like, unknown] }
         - in: query
           name: page_size
           description: >-
@@ -701,7 +765,7 @@ paths:
             Response format. `json` (default) is the page described below.
             `csv` streams the same feed as a file: one row per insider event,
             the same filters (`symbol`, `min_relevance`, `is_10b5_1`,
-            `from_date`/`to_date`, `sort`, `cursor`), walked page by page on
+            `decision`, `from_date`/`to_date`, `sort`, `cursor`), walked page by page on
             the server up to your plan's **row cap** — Free 500, Basic 2 000,
             Pro 10 000 rows per file — inside your plan's archive horizon
             (30 / 90 / 180 days). `page_size` has no effect on CSV. One
@@ -737,9 +801,11 @@ paths:
             `side`, `transaction_code`, `shares`, `avg_price_usd`,
             `total_value_usd`, `is_10b5_1`, `insider_name`, `insider_title`,
             `is_officer`, `is_director`, `is_ten_percent_owner`,
-            `transaction_date`, `filed_at`, `late_filing`, `summary` — the
-            JSON item's fields and its `insider` block flattened (event
-            columns are empty for a row without a block). RFC 4180 quoting,
+            `transaction_date`, `filed_at`, `late_filing`, `summary`,
+            `decision`, `decision_reason` — the JSON item's fields and its
+            `insider` block flattened (event columns are empty for a row
+            without a block). New columns are only ever appended after the
+            last one. RFC 4180 quoting,
             LF line endings, UTF-8, timestamps in ISO 8601 UTC (`Z`),
             booleans `true`/`false`, an empty cell for null, never the article
             body. A free-text cell that begins with `=`, `+`, `-`, `@` or a
@@ -790,9 +856,9 @@ paths:
             text/csv:
               schema: { type: string }
               example: |
-                uid,time_published,tickers,title,url,category,relevance_score,side,transaction_code,shares,avg_price_usd,total_value_usd,is_10b5_1,insider_name,insider_title,is_officer,is_director,is_ten_percent_owner,transaction_date,filed_at,late_filing,summary
-                3f9a1c2b7d8e4f60,2026-09-19T21:12:04Z,NVDA,"NVIDIA insider HUANG JEN HSUN sold 75,000 shares for $13.1M under a 10b5-1 plan",https://www.sec.gov/Archives/edgar/data/1045810/000104581026000123/xslF345X05/wk-form4.xml,insider,6,sell,S,75000,174.66,13099500,true,HUANG JEN HSUN,President and CEO,true,true,false,2026-09-18,2026-09-19T21:12:04Z,false,"Jen Hsun Huang, President and CEO of NVIDIA, sold 75,000 shares on 2026-09-18 at an average price of $174.66, for $13.1M, under a Rule 10b5-1 trading plan."
-        "400": { description: Invalid cursor (opaque; reuse `next_cursor`), a cursor replayed into the other `sort` mode, a date window combined with `sort=ingested` or with `from_date` after `to_date`, an unsupported `sort` value, or a `page_size` outside 1-50 or not permitted on this tier. }
+                uid,time_published,tickers,title,url,category,relevance_score,side,transaction_code,shares,avg_price_usd,total_value_usd,is_10b5_1,insider_name,insider_title,is_officer,is_director,is_ten_percent_owner,transaction_date,filed_at,late_filing,summary,decision,decision_reason
+                3f9a1c2b7d8e4f60,2026-09-19T21:12:04Z,NVDA,"NVIDIA insider HUANG JEN HSUN sold 75,000 shares for $13.1M under a 10b5-1 plan",https://www.sec.gov/Archives/edgar/data/1045810/000104581026000123/xslF345X05/wk-form4.xml,insider,6,sell,S,75000,174.66,13099500,true,HUANG JEN HSUN,President and CEO,true,true,false,2026-09-18,2026-09-19T21:12:04Z,false,"Jen Hsun Huang, President and CEO of NVIDIA, sold 75,000 shares on 2026-09-18 at an average price of $174.66, for $13.1M, under a Rule 10b5-1 trading plan.",plan_like,plan_10b5_1
+        "400": { description: Invalid cursor (opaque; reuse `next_cursor`), a cursor replayed into the other `sort` mode, a date window combined with `sort=ingested` or with `from_date` after `to_date`, an unsupported `sort` or `decision` value, or a `page_size` outside 1-50 or not permitted on this tier. }
         "403": { $ref: "#/components/responses/ArchiveGated" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "429": { $ref: "#/components/responses/RateLimited" }
@@ -3074,9 +3140,16 @@ components:
 
     EarningsCalendarItem:
       type: object
-      required: [ticker, company, report_date, status]
+      required: [ticker, listings, company, report_date, status]
       properties:
         ticker: { type: string, example: "MRNA" }
+        listings:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: string }
+          example: [GOOG, GOOGL]
+          description: "Sorted supported listings of this issuer, including ticker. Independent of the ticker filter; use these to match watchlist entries and deduplicate a report across batches. report_read.ticker still identifies the listing holding the read."
         company: { type: string, example: "Moderna, Inc." }
         sector: { type: string, nullable: true, example: "Healthcare" }
         report_date: { type: string, format: date, description: "New York market day: the date the source holds or, once we hold a read of the report, the day its filing landed." }
@@ -3163,6 +3236,8 @@ components:
             Where the article can be read: the publisher's own page. For a PR
             Newswire release (`source_domain` `prnewswire.com`) it is the
             release's permanent page on alphai.io with the licensed full text.
+            For a Bloomberg row (`source_domain` `bloomberg.com`) it is the
+            Bloomberg article, readable with a Bloomberg subscription.
         time_published: { type: string, format: date-time }
         authors:
           type: array
@@ -3171,7 +3246,12 @@ components:
             Article authors. On SEC Form 4 rows: every reporting owner of the
             filing, primary first — a joint filing by a holding vehicle and
             the person behind it lists both.
-        summary: { type: string, description: AI-generated summary safe to redistribute. }
+        summary:
+          type: string
+          description: >-
+            AI-generated summary safe to redistribute. On a Bloomberg row it is a
+            one-sentence restatement of the headline feed item, or the attributed
+            headline itself when no restatement passed our checks.
         banner_image: { type: string, format: uri, nullable: true }
         source: { type: string }
         source_domain: { type: string }
@@ -3788,6 +3868,17 @@ components:
             `source_type=sec_form8k` or `item=`). `null` on press, Form 4 and
             6-K rows, on the other endpoints, and on the rare 8-K row without
             structured data.
+        event:
+          nullable: true
+          allOf: [{ $ref: "#/components/schemas/CorporateEvent" }]
+          description: >-
+            `/api/news/`, `/api/news/search/` and `/api/news/{uid}/` — the
+            typed corporate event the document reports, with facts quoted from
+            its text. Present on SEC 8-K rows, 6-K earnings releases and PR
+            Newswire releases (`original.source_domain` `prnewswire.com`) once
+            the document has been read, usually within minutes of the row
+            appearing; `null` until then, on every other row (press coverage,
+            Form 4) and on the other endpoints. Filter with `event_type=`.
 
     StoryCard:
       type: object
@@ -4107,6 +4198,231 @@ components:
             then reads the cover document).
           example: "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000123/ex99-1.htm"
 
+    CorporateEventType:
+      type: string
+      description: >-
+        What a document is about, first of all. One type per row; other events
+        the same document reports are in `event.also`. `earnings` — a results
+        release (its numbers are in the `earnings` block of the article, not
+        here); `earnings_date` — the date of an upcoming report or call;
+        `guidance_update` — an outlook raised, lowered, reaffirmed, withdrawn
+        or initiated; `exec_change` — an officer or director appointed or
+        leaving; `m_and_a` — an acquisition, merger or divestiture;
+        `offering` — a sale of shares, units, warrants or convertible notes
+        (dilution); `debt_financing` — a loan, credit facility or
+        non-convertible notes; `dividend`; `buyback`; `contract_award` — a
+        customer contract, order, licence or supply agreement; `stock_split`
+        (forward or reverse); `listing_notice` — an exchange deficiency notice,
+        regained compliance, delisting or transfer; `shareholder_vote` —
+        results of a shareholder meeting; `bankruptcy`; `restructuring` —
+        layoffs or an exit plan with charges; `clinical_regulatory` — trial
+        data or a regulator's decision on a product; `other` — none of the
+        above.
+      enum:
+        - earnings
+        - earnings_date
+        - exec_change
+        - m_and_a
+        - offering
+        - debt_financing
+        - dividend
+        - buyback
+        - contract_award
+        - guidance_update
+        - stock_split
+        - listing_notice
+        - shareholder_vote
+        - bankruptcy
+        - restructuring
+        - clinical_regulatory
+        - other
+
+    CorporateEvent:
+      type: object
+      description: >-
+        The corporate event an SEC 8-K, a 6-K earnings release or a PR
+        Newswire release reports: a type, who the issuer is in it, and facts
+        quoted from the document. Every quoted value is searched for in the
+        document's text before it is published; a value that is not found
+        there is withheld, and `verified` says whether that happened. A type
+        settled by the 8-K item alone (`shareholder_vote` for item 5.07,
+        `bankruptcy` for 1.03, `restructuring` for 2.05, `listing_notice` for
+        3.01) has no facts. AI-generated from the document; check the filing
+        before acting on a number.
+      required: [type, facts, verified, also]
+      properties:
+        type: { $ref: "#/components/schemas/CorporateEventType" }
+        stage:
+          type: string
+          nullable: true
+          description: >-
+            How far the event has gone, for `m_and_a` (`announced`,
+            `definitive`, `completed`, `terminated`) and `offering`
+            (`proposed`, `priced`, `closed`, `terminated`). A copy of the
+            `stage` fact; `null` for the other types or when the document does
+            not say.
+          example: definitive
+        role:
+          type: string
+          nullable: true
+          enum: [issuer, acquirer, target, customer, supplier, other, null]
+          description: >-
+            The reporting company's side of the event: `acquirer` or `target`
+            in a deal, `customer` or `supplier` in a contract, `issuer` for
+            its own securities and corporate actions. `null` when not
+            established.
+          example: acquirer
+        counterparty:
+          type: string
+          nullable: true
+          description: >-
+            The other party, as named in the document: the target when `role`
+            is `acquirer`, the buyer when it is `target`, the customer or
+            supplier of a contract. A copy of the `counterparty` fact; `null`
+            when there is none or the name was not found in the text.
+          example: "Bluevine Inc."
+        facts:
+          type: array
+          items: { $ref: "#/components/schemas/CorporateEventFact" }
+          description: >-
+            The facts of the event, each quoted from the document. Which names
+            can appear depends on `type` (see `CorporateEventFact.name`). May
+            be empty: the type is published even when no fact could be quoted.
+        verified:
+          type: boolean
+          description: >-
+            `true` when nothing was withheld: every quoted fact was found in
+            the document and every enumerated one is a known value. `false`
+            when at least one fact was dropped by that check, or while the
+            facts are still being read (the row then carries the type and an
+            empty `facts`). The facts that ARE present have all passed the
+            check either way.
+        also:
+          type: array
+          items: { $ref: "#/components/schemas/CorporateSecondaryEvent" }
+          description: >-
+            Other events the same document reports, each with its own type and
+            facts — typically a dividend, a buyback or a guidance change
+            inside an earnings release. `event_type=` matches these too. Empty
+            when the document reports one event.
+      example:
+        type: m_and_a
+        stage: definitive
+        role: acquirer
+        counterparty: "Bluevine Inc."
+        facts:
+          - { name: deal_value, value: "$340 million", number: 340, number_high: null, unit: USD, scale: millions }
+          - { name: consideration, value: mixed, number: null, number_high: null, unit: null, scale: null }
+          - { name: expected_close, value: "early 2027", number: null, number_high: null, unit: null, scale: null }
+        verified: true
+        also: []
+
+    CorporateSecondaryEvent:
+      type: object
+      description: >-
+        Another event reported in the same document as the main one.
+      required: [type, facts]
+      properties:
+        type: { $ref: "#/components/schemas/CorporateEventType" }
+        facts:
+          type: array
+          items: { $ref: "#/components/schemas/CorporateEventFact" }
+          description: The facts of this event, quoted from the document.
+      example:
+        type: dividend
+        facts:
+          - { name: amount_per_share, value: "$0.21", number: 0.21, number_high: null, unit: USD, scale: null }
+
+    CorporateEventFact:
+      type: object
+      description: >-
+        One fact of a corporate event. `value` is the document's own wording;
+        the numeric fields are parsed from it by AlphAI, so a number is never
+        further from the document than the quote beside it.
+      required: [name, value]
+      properties:
+        name:
+          type: string
+          description: >-
+            What the fact is. By event type — `exec_change`: `person_name`,
+            `title`, `action`, `effective_date`, `successor_name`,
+            `predecessor_name`; `m_and_a`: `counterparty`, `seller`,
+            `deal_value`, `price_per_share`, `consideration`, `premium_pct`,
+            `expected_close`, `stage`; `offering`: `instrument`,
+            `gross_proceeds`, `shares`, `price_per_share`, `coupon_pct`,
+            `maturity`, `upsized`, `use_of_proceeds`, `stage`;
+            `debt_financing`: `instrument`, `amount`, `interest_rate`,
+            `maturity`, `lender`; `dividend`: `amount_per_share`, `currency`,
+            `frequency`, `kind`, `prior_amount_per_share`, `change_pct`,
+            `record_date`, `payable_date`, `ex_date`; `buyback`:
+            `authorization_amount`, `authorization_shares`,
+            `prior_authorization_amount`, `is_increase`, `expires_at`,
+            `pct_of_shares_outstanding`; `contract_award`: `counterparty`,
+            `value`, `duration`, `scope`; `guidance_update`: `metric`,
+            `period`, `new_value`, `prior_value`, `direction`; `stock_split`:
+            `ratio`, `is_reverse`, `effective_date`; `listing_notice`:
+            `exchange`, `kind`, `rule`; `restructuring`:
+            `headcount_reduction`, `headcount_pct`, `charges`;
+            `earnings_date`: `report_date`, `call_time`;
+            `clinical_regulatory`: `product`, `milestone`, `indication`. A
+            fact appears only when the document states it; percentages such as
+            `premium_pct` or `pct_of_shares_outstanding` are never computed.
+          example: deal_value
+        value:
+          type: string
+          description: >-
+            The fact as the document words it (`$25 billion`,
+            `Dec. 21, 2026`, `one-month term SOFR plus 110 basis points`) —
+            a quote, not a paraphrase. For the enumerated facts it is the
+            normalized value instead: `action` is one of `appointed`,
+            `elected`, `resigned`, `retired`, `terminated`, `interim`,
+            `promoted`; `consideration` `cash`, `stock`, `mixed`; `direction`
+            `raise`, `lower`, `reaffirm`, `withdraw`, `initiate`; `frequency`
+            `quarterly`, `monthly`, `semi-annual`, `annual`, `one-time`;
+            dividend `kind` `regular`, `special`, `initiation`, `increase`,
+            `cut`, `suspension`; listing `kind` `deficiency`,
+            `regained_compliance`, `delisting`, `transfer`, `uplisting`;
+            `milestone` `topline_data`, `fda_approval`, `crl`, `pdufa_date`,
+            `nda_submission`, `trial_start`, `discontinuation`; `stage` as
+            listed on `CorporateEvent.stage`; `is_increase`, `is_reverse`,
+            `upsized` `true` or `false`; `currency` a lowercase ISO code.
+          example: "$340 million"
+        number:
+          type: number
+          nullable: true
+          description: >-
+            The numeric value parsed from `value`, in the stated `scale`
+            (`$340 million` → `340`, scale `millions`; `$0.21` → `0.21`). The
+            low end when `value` is a range. `null` for text, dates and
+            enumerated facts, and when the figure cannot be read without a
+            guess.
+          example: 340
+        number_high:
+          type: number
+          nullable: true
+          description: >-
+            The high end when `value` is a range (`$6.50 to $6.90` → `number`
+            `6.5`, `number_high` `6.9`), in the same `scale` as `number`
+            (`$950 million to $1.1 billion` → `950` and `1100`, `millions`);
+            `null` for a single value.
+          example: null
+        unit:
+          type: string
+          nullable: true
+          description: >-
+            Unit of `number`: an ISO 4217 currency code (`USD`, `EUR`, `GBP`,
+            `CAD`, `AUD`, `CHF`, `HKD`, …), `percent` or `bps` (basis points);
+            `null` when the value states none, as for a share count.
+          example: USD
+        scale:
+          type: string
+          nullable: true
+          description: >-
+            Multiplier the document states next to the figure: `thousands`,
+            `millions`, `billions` or `trillions`. `null` means `number` is
+            the full figure.
+          example: millions
+
     InsiderEvent:
       type: object
       description: >-
@@ -4156,8 +4472,9 @@ components:
           type: boolean
           description: >-
             True when any tranche executed under a pre-arranged 10b5-1 plan.
-            Filterable on this endpoint: `?is_10b5_1=false` keeps only
-            discretionary events.
+            Filterable on this endpoint: `?is_10b5_1=false` keeps the events
+            not under a plan. For sales the insider chose to make, see
+            `decision`.
         insider_name: { type: string, example: "STEVENS MARK A" }
         insider_title: { type: string, example: "Director" }
         is_officer: { type: boolean }
@@ -4185,6 +4502,61 @@ components:
             separate `transaction_date` from the filing. About 3% of events
             carry it; the long tail is catch-up filings covering trades from
             years earlier.
+        decision:
+          type: string
+          nullable: true
+          enum: [discretionary, plan_like, unknown, null]
+          description: >-
+            Was the sale the insider's own decision? Read from the whole
+            filing, in this order: the 10b5-1 checkbox; a footnote that names
+            the mechanism (a plan, a tax sale on vesting, an exercise cover, a
+            sale the insider did not control); then, for officers and for
+            directors who are not 10% owners, the filing's own share arithmetic
+            (what was sold against what vested or was exercised in the same
+            filing). A sale none of these explains is `discretionary`.
+            `discretionary`: the insider chose to sell. `plan_like`: the sale
+            follows from a plan or from paperwork. `unknown`: the filing does
+            not let us tell. An event with several sales is `discretionary` if
+            any of them is, else `unknown` if any of them is, else
+            `plan_like`. `null` when the event holds no sale (purchases, `D`
+            and other codes are not labelled). The label can be revised when
+            the reading rules improve: the feed always carries the current
+            one, `sort=ingested` does not send a revised event again, and the
+            single-article lookup `/api/news/{uid}/` is cached for long, so it
+            can show an older label.
+          example: "discretionary"
+        decision_reason:
+          type: string
+          nullable: true
+          enum:
+            [plan_10b5_1, tax_withholding, exercise_cover,
+             stated_non_discretionary, open_market, exercise_and_sell,
+             sold_all_vested, partial_vest_sale, cover_ambiguous,
+             mixed_acquisitions, price_disputed, no_lines, null]
+          description: >-
+            Why the event got its `decision`, taken from the largest sale that
+            set it. With `plan_like`: `plan_10b5_1` (the 10b5-1 checkbox, or a
+            footnote that places the sale under a pre-arranged plan, so it can
+            appear with `is_10b5_1: false`), `tax_withholding` (shares sold to
+            pay the tax on vesting), `exercise_cover` (the sale covers the cost
+            of an option exercise and its tax), `stated_non_discretionary` (a
+            footnote says the sale was automatic or outside the insider's
+            discretion). With `discretionary`: `open_market` (no plan or
+            paperwork explains the sale: nothing in the filing points to one,
+            or the sale is far larger than what vested or was exercised),
+            `exercise_and_sell` (options exercised and the exercised shares
+            sold, beyond what covering the exercise needs), `sold_all_vested`
+            (the shares sold plus those withheld for tax cover everything that
+            vested). With `unknown`: `partial_vest_sale` (part of the newly
+            vested shares sold, more than the tax alone would need, or on top
+            of tax already withheld), `cover_ambiguous` (the sale could be an
+            exercise cover at a high tax rate or a choice), `mixed_acquisitions`
+            (the filing both vests shares and exercises options, so the sale
+            cannot be tied to either), `price_disputed` (the filed price failed
+            our price check, so the arithmetic is not trusted), `no_lines` (we
+            do not hold the rest of the filing). `null` when `decision` is
+            `null`, and for an `unknown` sale with no reason recorded.
+          example: "open_market"
 
     NewsPagination:
       type: object
@@ -4669,6 +5041,28 @@ components:
         is_10b5_1:
           type: boolean
           description: True when any tranche executed under a pre-arranged 10b5-1 plan.
+        decision:
+          type: string
+          nullable: true
+          enum: [discretionary, plan_like, unknown, null]
+          description: >-
+            The sale label, folded exactly like the feed's
+            `InsiderEvent.decision`. `null` for an event without a sale
+            (`transaction_code` `P` or `D`: a sale to the issuer counts as
+            `sell` on this page but is not labelled).
+          example: "plan_like"
+        decision_reason:
+          type: string
+          nullable: true
+          enum:
+            [plan_10b5_1, tax_withholding, exercise_cover,
+             stated_non_discretionary, open_market, exercise_and_sell,
+             sold_all_vested, partial_vest_sale, cover_ambiguous,
+             mixed_acquisitions, price_disputed, no_lines, null]
+          description: >-
+            Why the event got its `decision`; the same values and meanings as
+            the feed's `InsiderEvent.decision_reason`.
+          example: "tax_withholding"
         late_filing:
           type: boolean
           description: >-
